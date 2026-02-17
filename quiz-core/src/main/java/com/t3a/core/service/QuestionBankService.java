@@ -20,6 +20,7 @@ import java.util.List;
 public class QuestionBankService {
 
     private final QuestionBankMapper questionBankMapper;
+    private final QuestionService questionService;
 
     /**
      * 创建题库
@@ -36,11 +37,15 @@ public class QuestionBankService {
      * 根据ID查询题库
      */
     public QuestionBank getById(Long id) {
-        return questionBankMapper.selectOne(
+        QuestionBank bank = questionBankMapper.selectOne(
                 new LambdaQueryWrapper<QuestionBank>()
                         .eq(QuestionBank::getId, id)
                         .eq(QuestionBank::getDeleted, 0)
         );
+        if (bank != null) {
+            bank.setQuestionCount(questionService.countByBankId(bank.getId()));
+        }
+        return bank;
     }
 
     /**
@@ -61,19 +66,23 @@ public class QuestionBankService {
         wrapper.orderByDesc(QuestionBank::getCreateTime);
 
         Page<QuestionBank> page = new Page<>(pageNum, pageSize);
-        return questionBankMapper.selectPage(page, wrapper);
+        Page<QuestionBank> resultPage = questionBankMapper.selectPage(page, wrapper);
+        resultPage.getRecords().forEach(bank -> bank.setQuestionCount(questionService.countByBankId(bank.getId())));
+        return resultPage;
     }
 
     /**
      * 查询公开题库
      */
     public List<QuestionBank> listPublicBanks() {
-        return questionBankMapper.selectList(
+        List<QuestionBank> banks = questionBankMapper.selectList(
                 new LambdaQueryWrapper<QuestionBank>()
                         .eq(QuestionBank::getIsPublic, true)
                         .eq(QuestionBank::getDeleted, 0)
                         .orderByDesc(QuestionBank::getCreateTime)
         );
+        banks.forEach(bank -> bank.setQuestionCount(questionService.countByBankId(bank.getId())));
+        return banks;
     }
 
     /**
@@ -91,9 +100,7 @@ public class QuestionBankService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteBank(Long id) {
         log.info("删除题库: id={}", id);
-        QuestionBank bank = new QuestionBank();
-        bank.setId(id);
-        bank.setDeleted(1);
-        questionBankMapper.updateById(bank);
+        // Leverage MyBatis-Plus logic delete to avoid generating empty UPDATE SET SQL.
+        questionBankMapper.deleteById(id);
     }
 }

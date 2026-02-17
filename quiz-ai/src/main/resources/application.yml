@@ -45,6 +45,7 @@ spring:
 
 # 自定义 DeepSeek 配置
 app:
+  core-base-url: http://localhost:8081/quiz
   models:
     deepseek:
       base-url: https://api.deepseek.com

@@ -4,12 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/services/utils'
 import { useAuthStore } from '@/stores/authStore'
 
+const mojibakeRegex = /[ÃÂÐÑÅÆÇ][\u0080-\u00FF]|ç[\u0080-\u00FF]|å[\u0080-\u00FF]|æ[\u0080-\u00FF]|�/
+
 export default function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
   const { isAuthenticated, user, logout } = useAuthStore()
+  const safeNickname = user?.nickname && !mojibakeRegex.test(user.nickname) ? user.nickname : ''
+  const displayName = safeNickname || user?.username || 'User'
 
   const handleLogout = () => {
     logout()
@@ -81,9 +85,9 @@ export default function Header() {
                 className="flex items-center gap-3 px-4 py-2 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow-lg"
               >
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold">
-                  {user.nickname?.[0]?.toUpperCase() || 'U'}
+                  {displayName[0]?.toUpperCase() || 'U'}
                 </div>
-                <span className="hidden sm:inline font-medium">{user.nickname}</span>
+                <span className="hidden sm:inline font-medium">{displayName}</span>
               </motion.button>
 
               <AnimatePresence>

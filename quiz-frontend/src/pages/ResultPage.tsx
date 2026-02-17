@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import ScoreDisplay from '../components/stats/ScoreDisplay'
@@ -19,6 +19,32 @@ export default function ResultPage() {
   const [loading, setLoading] = useState(true)
   const [loadingAnalysis, setLoadingAnalysis] = useState(false)
 
+  const formatAnswer = (value: any, options?: string[]) => {
+    if (value === undefined || value === null || value === '') return '未作答'
+    const toLabel = (v: any) => {
+      if (typeof v === 'number') {
+        const optionText = options?.[v]
+        return optionText ? `${String.fromCharCode(65 + v)}. ${optionText}` : String.fromCharCode(65 + v)
+      }
+      if (typeof v === 'string') {
+        const normalized = v.trim()
+        if (/^\d+$/.test(normalized)) {
+          const idx = Number(normalized)
+          const optionText = options?.[idx]
+          return optionText ? `${String.fromCharCode(65 + idx)}. ${optionText}` : String.fromCharCode(65 + idx)
+        }
+      }
+      return String(v)
+    }
+    if (Array.isArray(value)) {
+      return value.map(toLabel).join(', ')
+    }
+    if (typeof value === 'string' && value.includes(',')) {
+      return value.split(',').map((v) => toLabel(Number.isNaN(Number(v)) ? v : Number(v))).join(', ')
+    }
+    return toLabel(value)
+  }
+
   useEffect(() => {
     if (!sessionKey) {
       navigate('/banks')
@@ -32,7 +58,23 @@ export default function ResultPage() {
     try {
       setLoading(true)
       const resultData = await quizApi.getResult(sessionKey!)
-      setResult(resultData)
+      const localRaw = sessionStorage.getItem(`quiz_result_local_${sessionKey}`)
+      const localResult = localRaw ? JSON.parse(localRaw) : null
+      if (localResult) {
+        const shouldUseLocal =
+          !resultData?.answers ||
+          resultData.answers.length === 0 ||
+          ((resultData?.score ?? 0) === 0 && (localResult.score ?? 0) > 0)
+        setResult({
+          ...resultData,
+          score: shouldUseLocal ? localResult.score : resultData?.score,
+          total: shouldUseLocal ? localResult.total : (resultData?.total || localResult.total),
+          percentage: shouldUseLocal ? localResult.percentage : (resultData?.percentage || localResult.percentage),
+          answers: shouldUseLocal ? localResult.answers : resultData.answers,
+        })
+      } else {
+        setResult(resultData)
+      }
 
       // Load AI analysis
       loadAnalysis()
@@ -56,6 +98,17 @@ export default function ResultPage() {
     }
   }
 
+  const safeAnalysis = {
+    strengths: analysis?.strengths || [],
+    weaknesses: analysis?.weaknesses || [],
+    overallFeedback: analysis?.overallFeedback || ((result?.percentage ?? 0) >= 80
+      ? '整体表现优秀，建议继续保持并挑战更高难度题目。'
+      : (result?.percentage ?? 0) >= 60
+      ? '基础掌握尚可，建议重点复习错题与薄弱知识点。'
+      : '当前正确率较低，建议先阅读参考答案和解析后再练习。'),
+    studyPlan: analysis?.studyPlan || [],
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -71,17 +124,35 @@ export default function ResultPage() {
   }
 
   if (!result) {
-    return null
+    return (
+      <div className="min-h-screen pb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-3xl mx-auto px-4 py-12"
+        >
+          <Card className="text-center py-12">
+            <div className="text-5xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">结果加载失败</h2>
+            <p className="text-gray-600 mb-6">本次测验结果暂时不可用，请稍后重试。</p>
+            <div className="flex justify-center gap-3">
+              <Button onClick={loadResult} variant="outline">重试</Button>
+              <Button onClick={() => navigate('/banks')}>返回题库</Button>
+            </div>
+          </Card>
+        </motion.div>
+      </div>
+    )
   }
 
   const percentage = result.percentage
   const timeTaken = Math.floor(result.timeTaken / 60)
-  const avgTimePerQuestion = Math.floor(result.timeTaken / result.total)
+  const totalQuestions = result.totalQuestions ?? result.answers?.length ?? 0
+  const correctAnswers = result.correctAnswers ?? (result.answers?.filter((item) => item.isCorrect).length ?? 0)
+  const avgTimePerQuestion = totalQuestions > 0 ? Math.floor(result.timeTaken / totalQuestions) : 0
 
   return (
     <div className="min-h-screen pb-8">
-      <Toaster position="top-center" />
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -101,13 +172,13 @@ export default function ResultPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             title="Total Questions"
-            value={result.total}
+            value={totalQuestions}
             icon="📝"
             gradient="primary"
           />
           <StatCard
             title="Correct Answers"
-            value={result.score}
+            value={correctAnswers}
             icon="✓"
             gradient="secondary"
           />
@@ -146,13 +217,13 @@ export default function ResultPage() {
           ) : analysis ? (
             <>
               {/* Strengths */}
-              {analysis.strengths.length > 0 && (
+              {safeAnalysis.strengths.length > 0 && (
                 <Card className="mb-6">
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                     💪 Strengths
                   </h3>
                   <div className="flex flex-wrap gap-3">
-                    {analysis.strengths.map((item, index) => (
+                    {safeAnalysis.strengths.map((item, index) => (
                       <motion.div
                         key={index}
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -163,7 +234,7 @@ export default function ResultPage() {
                       </motion.div>
                     ))}
                   </div>
-                  {analysis.strengths[0]?.recommendations && (
+                  {safeAnalysis.strengths[0]?.recommendations && (
                     <div className="mt-4 p-4 bg-green-50 border-l-4 border-success rounded-r-lg">
                       <p className="text-sm text-success">
                         <strong>Great job!</strong> You've demonstrated strong understanding in these areas.
@@ -174,13 +245,13 @@ export default function ResultPage() {
               )}
 
               {/* Weaknesses */}
-              {analysis.weaknesses.length > 0 && (
+              {safeAnalysis.weaknesses.length > 0 && (
                 <Card className="mb-6">
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                     ⚠️ Areas for Improvement
                   </h3>
                   <div className="flex flex-wrap gap-3">
-                    {analysis.weaknesses.map((item, index) => (
+                    {safeAnalysis.weaknesses.map((item, index) => (
                       <motion.div
                         key={index}
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -191,12 +262,12 @@ export default function ResultPage() {
                       </motion.div>
                     ))}
                   </div>
-                  {analysis.weaknesses[0]?.recommendations && (
+                  {safeAnalysis.weaknesses[0]?.recommendations && (
                     <div className="mt-4 p-4 bg-red-50 border-l-4 border-danger rounded-r-lg">
                       <p className="text-sm text-gray-700">
                         <strong>AI Recommendations:</strong>
                         <ul className="mt-2 space-y-1 list-disc list-inside">
-                          {analysis.weaknesses[0].recommendations.map((rec, i) => (
+                          {safeAnalysis.weaknesses[0].recommendations.map((rec, i) => (
                             <li key={i}>{rec}</li>
                           ))}
                         </ul>
@@ -207,23 +278,23 @@ export default function ResultPage() {
               )}
 
               {/* Overall Feedback */}
-              {analysis.overallFeedback && (
+              {safeAnalysis.overallFeedback && (
                 <Card className="mb-6">
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                     🎯 Overall Feedback
                   </h3>
-                  <p className="text-gray-700 leading-relaxed">{analysis.overallFeedback}</p>
+                  <p className="text-gray-700 leading-relaxed">{safeAnalysis.overallFeedback}</p>
                 </Card>
               )}
 
               {/* Study Plan */}
-              {analysis.studyPlan && analysis.studyPlan.length > 0 && (
+              {safeAnalysis.studyPlan && safeAnalysis.studyPlan.length > 0 && (
                 <Card className="mb-6">
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                     📚 Personalized Study Plan
                   </h3>
                   <ul className="space-y-3">
-                    {analysis.studyPlan.map((item, index) => (
+                    {safeAnalysis.studyPlan.map((item, index) => (
                       <motion.li
                         key={index}
                         initial={{ x: -20, opacity: 0 }}
@@ -256,6 +327,54 @@ export default function ResultPage() {
             </Card>
           )}
         </motion.div>
+
+        {/* Answer Review */}
+        {result.answers && result.answers.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            <Card className="mb-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                📘 参考答案与解析
+              </h3>
+              <div className="space-y-4">
+                {result.answers.map((item, idx) => (
+                  <div key={`${item.questionId}-${idx}`} className="p-4 rounded-xl border border-gray-200 bg-white">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <p className="font-semibold text-gray-800">第 {idx + 1} 题</p>
+                      <span className={item.isCorrect ? 'text-success font-semibold' : 'text-danger font-semibold'}>
+                        {item.isCorrect ? '正确' : '错误'}
+                      </span>
+                    </div>
+                    {item.question && <p className="text-gray-800 mb-2">{item.question}</p>}
+                    <p className="text-sm text-gray-600 mb-1">
+                      你的答案: <span className="font-medium text-gray-800">{formatAnswer(item.userAnswer, item.options)}</span>
+                    </p>
+                    <p className="text-sm text-gray-600 mb-1">
+                      参考答案: <span className="font-medium text-gray-800">
+                        {item.correctAnswer && String(item.correctAnswer).trim()
+                          ? formatAnswer(item.correctAnswer, item.options)
+                          : (item.explanation ? '见解析要点' : '暂无参考答案')}
+                      </span>
+                    </p>
+                    {item.explanation && (
+                      <p className="text-sm text-gray-700 bg-primary-50 rounded-lg p-3 mt-2">
+                        解析: {item.explanation}
+                      </p>
+                    )}
+                    {item.aiFeedback && (
+                      <p className="text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+                        点评: {item.aiFeedback}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-4 justify-center mt-8">

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS t_user (
     password VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL,
     nickname VARCHAR(50),
+    avatar VARCHAR(200),
     role VARCHAR(20) DEFAULT 'USER',
     status INT DEFAULT 1,
     deleted INT DEFAULT 0,
@@ -68,10 +69,28 @@ CREATE TABLE IF NOT EXISTS t_quiz_session (
     FOREIGN KEY (bank_id) REFERENCES t_question_bank(id)
 );
 
+-- User answers table
+CREATE TABLE IF NOT EXISTS t_user_answer (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id BIGINT NOT NULL,
+    question_id BIGINT NOT NULL,
+    user_answer TEXT,
+    is_correct INT,
+    score DECIMAL(10, 2) DEFAULT 0,
+    ai_feedback TEXT,
+    answer_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted INT DEFAULT 0,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES t_quiz_session(id),
+    FOREIGN KEY (question_id) REFERENCES t_question(id)
+);
+
 -- Indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_question_bank_creator ON t_question_bank(creator_id);
 CREATE INDEX IF NOT EXISTS idx_question_bank_category ON t_question_bank(category);
 CREATE INDEX IF NOT EXISTS idx_question_bank_id ON t_question_bank(id);
-CREATE INDEX IF NOT EXISTS idx_question_bank_id ON t_question(bank_id);
+CREATE INDEX IF NOT EXISTS idx_question_bank_question_id ON t_question(bank_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_session_user ON t_quiz_session(user_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_session_key ON t_quiz_session(session_key);
+CREATE INDEX IF NOT EXISTS idx_user_answer_session ON t_user_answer(session_id);

@@ -18,7 +18,19 @@ aiApiInstance.interceptors.request.use((config) => {
 
 // Add response interceptor to handle errors
 aiApiInstance.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    const payload = response.data as any
+    if (payload && typeof payload === 'object' && 'code' in payload) {
+      if (payload.code !== 200) {
+        const apiError: any = new Error(payload.message || 'AI request failed')
+        apiError.code = payload.code
+        apiError.response = response
+        return Promise.reject(apiError)
+      }
+      return payload.data
+    }
+    return response.data
+  },
   (error) => {
     console.error('[AI API] Error:', {
       status: error.response?.status,
@@ -37,14 +49,19 @@ aiApiInstance.interceptors.response.use(
 export interface GenerationSettings {
   file: File
   questionCount: number
-  types: ('single' | 'multiple' | 'code')[]
+  typeCounts: {
+    single: number
+    multiple: number
+    short: number
+  }
+  bankName?: string
   difficulty: 'easy' | 'medium' | 'hard' | 'mixed'
 }
 
 export interface GenerationRequest {
   count: number
   difficulty: string
-  typeDistribution: { [key: string]: number }
+  typeDistribution: string
   bankName?: string
   category?: string
 }
@@ -79,19 +96,17 @@ export const aiApi = {
     const formData = new FormData()
     formData.append('file', settings.file)
 
-    // Convert types array to typeDistribution object
-    const typeDistribution: { [key: string]: number } = {}
-    const typeCount = settings.types.length
-    settings.types.forEach(type => {
-      const backendType = type === 'single' ? 'SINGLE_CHOICE' : 
-                          type === 'multiple' ? 'MULTIPLE_CHOICE' : 'SHORT_ANSWER'
-      typeDistribution[backendType] = Math.round(100 / typeCount)
-    })
+    const typeDistribution: { [key: string]: number } = {
+      SINGLE_CHOICE: settings.typeCounts.single,
+      MULTIPLE_CHOICE: settings.typeCounts.multiple,
+      SHORT_ANSWER: settings.typeCounts.short,
+    }
 
     const request: GenerationRequest = {
       count: settings.questionCount,
       difficulty: settings.difficulty.toUpperCase(),
-      typeDistribution,
+      typeDistribution: JSON.stringify(typeDistribution),
+      bankName: settings.bankName?.trim() || undefined,
     }
     formData.append('request', JSON.stringify(request))
 

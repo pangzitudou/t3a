@@ -6,9 +6,12 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -19,23 +22,32 @@ import java.io.InputStream;
 @Service
 public class DocumentParserService {
 
+    @Value("${spring.servlet.multipart.max-file-size:100MB}")
+    private DataSize maxFileSize;
+
     /**
      * 解析上传的文件，提取文本内容
      */
     public String parseDocument(MultipartFile file) throws IOException {
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) {
-            throw new IllegalArgumentException("文件名不能为空");
-        }
+        if (originalFilename == null) throw new IllegalArgumentException("文件名不能为空");
+        return parseDocument(originalFilename, file.getBytes());
+    }
 
+    /**
+     * 解析上传的文件字节，提取文本内容（避免异步场景下临时文件失效）
+     */
+    public String parseDocument(String originalFilename, byte[] fileBytes) throws IOException {
+        validateFileType(originalFilename);
         String extension = getFileExtension(originalFilename).toLowerCase();
-
-        return switch (extension) {
-            case "pdf" -> parsePdf(file.getInputStream());
-            case "txt" -> parseTxt(file.getInputStream());
-            case "docx", "doc" -> parseWord(file.getInputStream());
-            default -> throw new IllegalArgumentException("不支持的文件格式: " + extension);
-        };
+        try (InputStream inputStream = new ByteArrayInputStream(fileBytes)) {
+            return switch (extension) {
+                case "pdf" -> parsePdf(inputStream);
+                case "txt" -> parseTxt(inputStream);
+                case "docx", "doc" -> parseWord(inputStream);
+                default -> throw new IllegalArgumentException("不支持的文件格式: " + extension);
+            };
+        }
     }
 
     /**
@@ -83,12 +95,16 @@ public class DocumentParserService {
     }
 
     /**
-     * 验证文件大小（最大10MB）
+     * 验证文件大小（与 multipart max-file-size 配置保持一致）
      */
     public void validateFileSize(MultipartFile file) {
-        long maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.getSize() > maxSize) {
-            throw new IllegalArgumentException("文件大小不能超过10MB");
+        validateFileSize(file.getSize());
+    }
+
+    public void validateFileSize(long fileSize) {
+        long maxSize = maxFileSize.toBytes();
+        if (fileSize > maxSize) {
+            throw new IllegalArgumentException("文件大小不能超过" + maxFileSize);
         }
     }
 
@@ -96,7 +112,10 @@ public class DocumentParserService {
      * 验证文件类型
      */
     public void validateFileType(MultipartFile file) {
-        String filename = file.getOriginalFilename();
+        validateFileType(file.getOriginalFilename());
+    }
+
+    public void validateFileType(String filename) {
         if (filename == null) {
             throw new IllegalArgumentException("文件名不能为空");
         }

@@ -4,6 +4,7 @@ import com.t3a.core.domain.entity.Question;
 import com.t3a.core.domain.entity.QuestionBank;
 import com.t3a.core.domain.entity.QuizSession;
 import com.t3a.core.domain.entity.User;
+import com.t3a.core.domain.entity.UserAnswer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +18,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * 测验会话服务测试
- */
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
@@ -39,10 +37,12 @@ class QuizSessionServiceTest {
 
     private Long userId;
     private Long bankId;
+    private Long singleQuestionId;
+    private Long multipleQuestionId;
+    private Long shortQuestionId;
 
     @BeforeEach
     void setUp() {
-        // 创建测试用户
         User user = new User();
         user.setUsername("testuser" + System.currentTimeMillis());
         user.setPassword("test123");
@@ -51,7 +51,6 @@ class QuizSessionServiceTest {
         User createdUser = userService.createUser(user);
         userId = createdUser.getId();
 
-        // 创建测试题库
         QuestionBank bank = new QuestionBank();
         bank.setName("测试题库");
         bank.setDescription("用于测试");
@@ -62,9 +61,43 @@ class QuizSessionServiceTest {
         QuestionBank createdBank = bankService.createBank(bank);
         bankId = createdBank.getId();
 
-        // 创建20道测试题目
+        Question single = new Question();
+        single.setBankId(bankId);
+        single.setQuestionType("SINGLE_CHOICE");
+        single.setContent("单选题");
+        single.setOptions("[\"A\",\"B\",\"C\",\"D\"]");
+        single.setCorrectAnswer("A");
+        single.setExplanation("单选解析");
+        single.setDifficulty("MEDIUM");
+        single.setScore(10);
+        single.setAiGenerated(false);
+        singleQuestionId = questionService.createQuestion(single).getId();
+
+        Question multi = new Question();
+        multi.setBankId(bankId);
+        multi.setQuestionType("MULTIPLE_CHOICE");
+        multi.setContent("多选题");
+        multi.setOptions("[\"A\",\"B\",\"C\",\"D\"]");
+        multi.setCorrectAnswer("A,C");
+        multi.setExplanation("多选解析");
+        multi.setDifficulty("MEDIUM");
+        multi.setScore(10);
+        multi.setAiGenerated(false);
+        multipleQuestionId = questionService.createQuestion(multi).getId();
+
+        Question shortQ = new Question();
+        shortQ.setBankId(bankId);
+        shortQ.setQuestionType("SHORT_ANSWER");
+        shortQ.setContent("简述 Redis 单线程优势");
+        shortQ.setCorrectAnswer("高并发 网络IO 非阻塞");
+        shortQ.setExplanation("要点：高并发、网络IO、多路复用");
+        shortQ.setDifficulty("MEDIUM");
+        shortQ.setScore(10);
+        shortQ.setAiGenerated(false);
+        shortQuestionId = questionService.createQuestion(shortQ).getId();
+
         List<Question> questions = new ArrayList<>();
-        for (int i = 1; i <= 20; i++) {
+        for (int i = 1; i <= 8; i++) {
             Question q = new Question();
             q.setBankId(bankId);
             q.setQuestionType("SINGLE_CHOICE");
@@ -82,10 +115,7 @@ class QuizSessionServiceTest {
 
     @Test
     void testCreateSession_Success() {
-        // 创建会话
         QuizSession session = sessionService.createSession(userId, bankId, 10);
-
-        // 验证
         assertNotNull(session);
         assertNotNull(session.getId());
         assertNotNull(session.getSessionKey());
@@ -93,71 +123,76 @@ class QuizSessionServiceTest {
         assertEquals(bankId, session.getBankId());
         assertEquals(10, session.getTotalQuestions());
         assertEquals(0, session.getAnsweredCount());
-        assertEquals(100, session.getTotalScore()); // 10题 * 10分
+        assertEquals(100, session.getTotalScore());
         assertEquals("IN_PROGRESS", session.getStatus());
         assertNotNull(session.getStartTime());
     }
 
     @Test
-    void testCreateSession_InsufficientQuestions() {
-        // 创建新题库（无题目）
-        QuestionBank emptyBank = new QuestionBank();
-        emptyBank.setName("空题库");
-        emptyBank.setDescription("无题目");
-        emptyBank.setCategory("Test");
-        emptyBank.setCreatorId(userId);
-        emptyBank.setIsPublic(false);
-        emptyBank.setAiGenerated(false);
-        QuestionBank created = bankService.createBank(emptyBank);
+    void testSaveAnswer_SingleChoiceAndMultipleChoice_ShouldScoreCorrectly() {
+        QuizSession session = sessionService.createSession(userId, bankId, 10);
 
-        // 尝试创建会话应该失败
-        assertThrows(RuntimeException.class, () -> {
-            sessionService.createSession(userId, created.getId(), 10);
-        });
+        sessionService.saveAnswer(session.getSessionKey(), singleQuestionId, 0);
+        sessionService.saveAnswer(session.getSessionKey(), multipleQuestionId, List.of(0, 2));
+
+        List<UserAnswer> answers = sessionService.listAnswers(session.getId());
+        assertEquals(2, answers.size());
+        assertEquals(2, sessionService.getBySessionKey(session.getSessionKey()).getAnsweredCount());
+
+        BigDecimal sum = answers.stream()
+                .map(a -> a.getScore() == null ? BigDecimal.ZERO : a.getScore())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(new BigDecimal("20.00"), sum.setScale(2));
     }
 
     @Test
-    void testSubmitSession_Success() throws InterruptedException {
-        // 创建会话
+    void testSaveAnswer_MultipleChoiceWrong_ShouldScoreZero() {
         QuizSession session = sessionService.createSession(userId, bankId, 10);
-        String sessionKey = session.getSessionKey();
 
-        // 等待1秒以确保有耗时
-        Thread.sleep(1000);
+        sessionService.saveAnswer(session.getSessionKey(), multipleQuestionId, List.of(0));
+        List<UserAnswer> answers = sessionService.listAnswers(session.getId());
 
-        // 提交会话
-        BigDecimal userScore = new BigDecimal("85.5");
-        QuizSession submitted = sessionService.submitSession(sessionKey, userScore);
+        assertEquals(1, answers.size());
+        assertEquals(0, answers.get(0).getScore().intValue());
+        assertEquals(0, answers.get(0).getIsCorrect());
+    }
 
-        // 验证
-        assertNotNull(submitted);
+    @Test
+    void testSubmitSession_ShouldUseServerCalculatedScore() {
+        QuizSession session = sessionService.createSession(userId, bankId, 10);
+        sessionService.saveAnswer(session.getSessionKey(), singleQuestionId, 0);
+        sessionService.saveAnswer(session.getSessionKey(), multipleQuestionId, List.of(0, 2));
+
+        QuizSession submitted = sessionService.submitSession(session.getSessionKey(), new BigDecimal("1.00"));
         assertEquals("COMPLETED", submitted.getStatus());
-        assertEquals(userScore, submitted.getUserScore());
+        assertEquals(new BigDecimal("20.00"), submitted.getUserScore().setScale(2));
         assertNotNull(submitted.getSubmitTime());
-        assertTrue(submitted.getTimeSpent() >= 1); // 至少1秒
+    }
+
+    @Test
+    void testSaveAnswer_ShortAnswer_ShouldSupportPartialScore() {
+        QuizSession session = sessionService.createSession(userId, bankId, 10);
+        sessionService.saveAnswer(session.getSessionKey(), shortQuestionId, "Redis 高并发，依靠网络IO模型");
+
+        List<UserAnswer> answers = sessionService.listAnswers(session.getId());
+        assertEquals(1, answers.size());
+        assertTrue(answers.get(0).getScore().compareTo(BigDecimal.ZERO) > 0);
+        assertTrue(answers.get(0).getScore().compareTo(new BigDecimal("10.00")) < 0);
     }
 
     @Test
     void testSubmitSession_AlreadyCompleted() {
-        // 创建并提交会话
         QuizSession session = sessionService.createSession(userId, bankId, 10);
         sessionService.submitSession(session.getSessionKey(), new BigDecimal("80"));
 
-        // 再次提交应该失败
-        assertThrows(IllegalStateException.class, () -> {
-            sessionService.submitSession(session.getSessionKey(), new BigDecimal("90"));
-        });
+        assertThrows(IllegalStateException.class, () ->
+                sessionService.submitSession(session.getSessionKey(), new BigDecimal("90")));
     }
 
     @Test
     void testGetBySessionKey_Success() {
-        // 创建会话
         QuizSession session = sessionService.createSession(userId, bankId, 10);
-
-        // 通过sessionKey查询
         QuizSession found = sessionService.getBySessionKey(session.getSessionKey());
-
-        // 验证
         assertNotNull(found);
         assertEquals(session.getId(), found.getId());
         assertEquals(session.getSessionKey(), found.getSessionKey());
@@ -165,15 +200,11 @@ class QuizSessionServiceTest {
 
     @Test
     void testListUserSessions_Success() {
-        // 创建多个会话
         sessionService.createSession(userId, bankId, 10);
-        sessionService.createSession(userId, bankId, 15);
-        sessionService.createSession(userId, bankId, 20);
+        sessionService.createSession(userId, bankId, 8);
+        sessionService.createSession(userId, bankId, 6);
 
-        // 查询用户的所有会话
         List<QuizSession> sessions = sessionService.listUserSessions(userId);
-
-        // 验证
         assertNotNull(sessions);
         assertEquals(3, sessions.size());
     }

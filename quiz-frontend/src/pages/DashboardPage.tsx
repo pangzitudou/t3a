@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import StatCard from '../components/stats/StatCard'
@@ -64,8 +64,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen pb-8">
-      <Toaster position="top-center" />
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

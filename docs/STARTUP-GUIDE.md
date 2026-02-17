@@ -18,6 +18,14 @@ docker -v
 docker compose version
 ```
 
+如果机器上有多个 JDK，建议固定到 JDK 17（避免 JDK 25 + Lombok 编译异常）：
+
+```bash
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export PATH="$JAVA_HOME/bin:$PATH"
+java -version
+```
+
 ## 2. 推荐启动方式（手动，最稳定）
 
 在项目根目录 `/Users/zeni/projects/t3a` 执行：
@@ -91,6 +99,10 @@ AI 生成失败：
 
 `generation/status` 返回 `NOT_FOUND`：
 - 任务 ID 不存在或已过期（TTL 1 小时）。
+
+`mvn compile` 报错 `TypeTag :: UNKNOWN`：
+- 原因：使用了不兼容的高版本 JDK（如 JDK 25）。
+- 处理：切换到 JDK 17 后重新编译与启动（见第 1 节）。
 
 ## 7. 关于脚本
 - `docs/check-env.sh`、`docs/t3a-manager.sh` 可参考使用。

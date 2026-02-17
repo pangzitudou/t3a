@@ -10,7 +10,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -41,8 +44,41 @@ public class QuestionService {
     @Transactional(rollbackFor = Exception.class)
     public void batchCreate(List<Question> questions) {
         log.info("批量创建题目: count={}", questions.size());
-        questions.forEach(q -> q.setDeleted(0));
-        questions.forEach(questionMapper::insert);
+        if (questions == null || questions.isEmpty()) {
+            return;
+        }
+
+        // 输入批次内去重（同题库 + 题干）
+        Map<String, Question> dedupedInput = new LinkedHashMap<>();
+        for (Question q : questions) {
+            if (q == null || q.getBankId() == null) {
+                continue;
+            }
+            String key = q.getBankId() + "#" + normalizeContent(q.getContent());
+            if (!dedupedInput.containsKey(key)) {
+                dedupedInput.put(key, q);
+            }
+        }
+
+        // 与数据库现有题目去重（同题库 + 题干）
+        List<Question> toInsert = new ArrayList<>();
+        for (Question q : dedupedInput.values()) {
+            String normalized = normalizeContent(q.getContent());
+            long exists = questionMapper.selectCount(
+                    new LambdaQueryWrapper<Question>()
+                            .eq(Question::getBankId, q.getBankId())
+                            .eq(Question::getDeleted, 0)
+                            .apply("LOWER(TRIM(content)) = {0}", normalized)
+            );
+            if (exists == 0) {
+                q.setDeleted(0);
+                toInsert.add(q);
+            }
+        }
+
+        toInsert.forEach(questionMapper::insert);
+        log.info("批量创建题目完成: request={}, inserted={}, deduped={}",
+                questions.size(), toInsert.size(), questions.size() - toInsert.size());
     }
 
     /**
@@ -67,7 +103,7 @@ public class QuestionService {
         log.info("随机获取题目: bankId={}, count={}", bankId, count);
 
         // 查询所有题目
-        List<Question> allQuestions = listByBankId(bankId);
+        List<Question> allQuestions = deduplicateQuestions(listByBankId(bankId));
 
         if (allQuestions.isEmpty()) {
             log.warn("题库为空: bankId={}", bankId);
@@ -96,12 +132,12 @@ public class QuestionService {
     public List<Question> getRandomQuestionsByDifficulty(Long bankId, String difficulty, Integer count) {
         log.info("按难度随机获取题目: bankId={}, difficulty={}, count={}", bankId, difficulty, count);
 
-        List<Question> questions = questionMapper.selectList(
+        List<Question> questions = deduplicateQuestions(questionMapper.selectList(
                 new LambdaQueryWrapper<Question>()
                         .eq(Question::getBankId, bankId)
                         .eq(Question::getDifficulty, difficulty)
                         .eq(Question::getDeleted, 0)
-        );
+        ));
 
         if (questions.size() <= count) {
             Collections.shuffle(questions);
@@ -138,10 +174,8 @@ public class QuestionService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteQuestion(Long id) {
         log.info("删除题目: id={}", id);
-        Question question = new Question();
-        question.setId(id);
-        question.setDeleted(1);
-        questionMapper.updateById(question);
+        // Leverage MyBatis-Plus logic delete to avoid generating empty UPDATE SET SQL.
+        questionMapper.deleteById(id);
     }
 
     /**
@@ -153,5 +187,26 @@ public class QuestionService {
                         .eq(Question::getBankId, bankId)
                         .eq(Question::getDeleted, 0)
         );
+    }
+
+    private String normalizeContent(String content) {
+        if (content == null) {
+            return "";
+        }
+        return content.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private List<Question> deduplicateQuestions(List<Question> source) {
+        if (source == null || source.isEmpty()) {
+            return source;
+        }
+        Map<String, Question> deduped = new LinkedHashMap<>();
+        for (Question q : source) {
+            String key = normalizeContent(q.getContent());
+            if (!deduped.containsKey(key)) {
+                deduped.put(key, q);
+            }
+        }
+        return new ArrayList<>(deduped.values());
     }
 }

@@ -21,7 +21,7 @@ quiz-core (:8081)
 quiz-ai (:8082)
   ├─ 文档解析 + LLM 题目生成
   ├─ 任务状态 Redis 轮询
-  └─ 分析接口（当前为占位实现）
+  └─ 结果分析与点评
 
 quiz-communication (:8083)
   └─ STOMP + SockJS
@@ -57,7 +57,7 @@ quiz-communication (:8083)
 
 AI 生成链路：
 1. 前端上传 `multipart/form-data` 到 `/api/ai/generation/generate`
-2. AI 服务解析文档 -> 调 LLM -> 更新 Redis 任务状态
+2. AI 服务解析文档 -> 分批调用 LLM -> 去重/补题 -> 回写 core 题库 -> 更新 Redis 任务状态
 3. 前端轮询 `/api/ai/generation/status/{taskId}`
 
 ## 4. 鉴权与协议
@@ -70,15 +70,15 @@ AI 生成链路：
 
 已实现：
 - 用户认证（JWT）
-- 题库/题目基础 CRUD
-- 测验会话创建与提交
-- AI 文档解析与题目生成任务状态查询
+- 题库/题目 CRUD、题目去重（入库与抽题）
+- 测验会话创建/提交/退出（退出不保留记录）
+- 单题提交落库与客观题/主观题评分
+- AI 文档解析、分批生成、任务状态查询、回写题库
+- Dashboard 真实统计聚合
 
-未闭环/占位：
-- AI 题目未回写 `quiz-core`（TODO）
-- Dashboard 统计占位
-- AI 分析占位
-- 单题提交接口未完成实质计分与落库
+边界与注意：
+- 主观题评分为“要点命中”规则，建议继续迭代更细粒度语义评分
+- LLM 输出仍可能抖动，需依赖解析修复与重试策略
 
 ## 6. 配置要点
 - `quiz-core`: `server.servlet.context-path=/quiz`

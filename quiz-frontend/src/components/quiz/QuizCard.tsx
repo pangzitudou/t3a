@@ -11,7 +11,6 @@ export interface QuizCardProps {
   questionNumber: number
   totalQuestions: number
   type?: QuestionType
-  explanation?: string
 }
 
 export default function QuizCard({
@@ -22,7 +21,6 @@ export default function QuizCard({
   questionNumber,
   totalQuestions,
   type = 'single',
-  explanation,
 }: QuizCardProps) {
   const isSelected = (index: number) => {
     if (Array.isArray(selectedOption)) {
@@ -32,9 +30,15 @@ export default function QuizCard({
   }
 
   const typeLabel = {
-    single: 'Single Choice',
-    multiple: 'Multiple Choice',
+    single: '单选题',
+    multiple: '多选题',
     code: 'Code Question',
+  }
+
+  const typeStyle = {
+    single: 'bg-indigo-100 text-indigo-700 border border-indigo-200',
+    multiple: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+    code: 'bg-primary-100 text-primary-700 border border-primary-200',
   }
 
   return (
@@ -48,10 +52,14 @@ export default function QuizCard({
         <div className="text-primary-600 font-bold text-lg">
           Question {questionNumber} of {totalQuestions}
         </div>
-        <span className="px-4 py-1.5 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
+        <span className={cn('px-4 py-1.5 rounded-full text-sm font-semibold', typeStyle[type])}>
           {typeLabel[type]}
         </span>
       </div>
+
+      <p className="text-sm mb-4 font-medium text-gray-600">
+        {type === 'multiple' ? '可选择多个选项，再切换题目。' : '仅可选择一个选项。'}
+      </p>
 
       <h2 className="text-2xl font-semibold text-gray-800 mb-8 leading-relaxed">
         {question}
@@ -67,10 +75,10 @@ export default function QuizCard({
               onClick={() => onOptionSelect(index)}
               className={cn(
                 'w-full text-left p-5 rounded-xl border-2 transition-all duration-300',
-                'bg-white hover:bg-primary-50',
+                'bg-white text-gray-900 hover:bg-indigo-50',
                 isSelected(index)
                   ? 'border-primary-500 bg-primary-500 text-white shadow-lg'
-                  : 'border-gray-200 hover:border-primary-500'
+                  : 'border-gray-200 hover:border-indigo-400'
               )}
             >
               <span className="font-semibold mr-3">{String.fromCharCode(65 + index)}.</span>
@@ -80,17 +88,6 @@ export default function QuizCard({
         </div>
       )}
 
-      {explanation && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg"
-        >
-          <p className="text-sm text-blue-800">
-            <strong>💡 Explanation:</strong> {explanation}
-          </p>
-        </motion.div>
-      )}
     </motion.div>
   )
 }

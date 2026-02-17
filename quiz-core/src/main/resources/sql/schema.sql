@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS t_question (
     question_type VARCHAR(20) NOT NULL COMMENT '题型: SINGLE_CHOICE/MULTIPLE_CHOICE/SHORT_ANSWER/CODE',
     content TEXT NOT NULL COMMENT '题目内容',
     options JSON COMMENT '选项(JSON格式)',
-    correct_answer VARCHAR(500) NOT NULL COMMENT '正确答案',
+    correct_answer TEXT NOT NULL COMMENT '正确答案',
     explanation TEXT COMMENT '解析说明',
     difficulty VARCHAR(20) DEFAULT 'MEDIUM' COMMENT '难度: EASY/MEDIUM/HARD',
     tags VARCHAR(200) COMMENT '知识点标签(逗号分隔)',

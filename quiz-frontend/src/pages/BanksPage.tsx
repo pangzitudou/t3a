@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Tag, { TagVariant } from '../components/ui/Tag'
@@ -12,6 +12,7 @@ export default function BanksPage() {
   const navigate = useNavigate()
   const { isAuthenticated, user } = useAuthStore()
   const [banks, setBanks] = useState<QuestionBank[]>([])
+  const [keyword, setKeyword] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -31,7 +32,11 @@ export default function BanksPage() {
       setBanks(Array.isArray(banksList) ? banksList : [])
     } catch (error: any) {
       console.error('Failed to load banks:', error)
-      toast.error('Failed to load question banks')
+      if (error?.code === 'ERR_NETWORK') {
+        toast.error('前端开发服务连接中断，请重启前端服务后刷新页面')
+      } else {
+        toast.error('Failed to load question banks')
+      }
     } finally {
       setLoading(false)
     }
@@ -82,6 +87,16 @@ export default function BanksPage() {
     }
   }
 
+  const filteredBanks = banks.filter((bank) => {
+    const key = keyword.trim().toLowerCase()
+    if (!key) return true
+    return (
+      (bank.name || '').toLowerCase().includes(key) ||
+      ((bank as any).description || '').toLowerCase().includes(key) ||
+      ((bank as any).category || '').toLowerCase().includes(key)
+    )
+  })
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -98,8 +113,6 @@ export default function BanksPage() {
 
   return (
     <div className="min-h-screen pb-8">
-      <Toaster position="top-center" />
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -116,8 +129,17 @@ export default function BanksPage() {
           </Button>
         </div>
 
+        <div className="mb-6">
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="搜索题库名称/描述/分类"
+            className="w-full md:w-96 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none"
+          />
+        </div>
+
         {/* Banks Grid */}
-        {banks.length === 0 ? (
+        {filteredBanks.length === 0 ? (
           <Card className="text-center py-16">
             <motion.div
               initial={{ scale: 0 }}
@@ -127,15 +149,19 @@ export default function BanksPage() {
             >
               📚
             </motion.div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">No Question Banks Yet</h3>
-            <p className="text-gray-600 mb-6">Create your first AI-generated question bank to get started!</p>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">
+              {banks.length === 0 ? 'No Question Banks Yet' : '未找到匹配题库'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {banks.length === 0 ? 'Create your first AI-generated question bank to get started!' : '请调整搜索关键词后重试。'}
+            </p>
             <Button onClick={() => navigate('/generate')} size="lg">
               Generate Questions
             </Button>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {banks.map((bank, index) => (
+            {filteredBanks.map((bank, index) => (
               <motion.div
                 key={bank.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -147,13 +173,13 @@ export default function BanksPage() {
                     <h3 className="text-xl font-bold text-gray-800 mb-3">{bank.name}</h3>
                     <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
                       <span>📝</span>
-                      <span>{bank.questionCount} questions</span>
+                      <span>{(bank as any).questionCount ?? 0} questions</span>
                     </div>
 
                     {/* Tags */}
                     <div className="flex flex-wrap gap-2 mb-4">
                       <Tag variant={getDifficultyColor(bank.difficulty)}>
-                        {bank.difficulty}
+                        {bank.difficulty || 'mixed'}
                       </Tag>
                       {(bank.types || []).map((type) => (
                         <Tag key={type} variant="default">
@@ -164,7 +190,7 @@ export default function BanksPage() {
 
                     {/* Created Date */}
                     <div className="text-xs text-gray-500">
-                      Created {new Date(bank.createdAt).toLocaleDateString()}
+                      Created {new Date((bank as any).createdAt || (bank as any).createTime || Date.now()).toLocaleDateString()}
                     </div>
                   </div>
 

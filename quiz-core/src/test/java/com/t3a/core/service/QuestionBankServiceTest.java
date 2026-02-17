@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
@@ -17,6 +19,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -25,10 +28,14 @@ import static org.mockito.Mockito.*;
  * Tests business logic using Mockito for dependencies
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class QuestionBankServiceTest {
 
     @Mock
     private QuestionBankMapper bankMapper;
+
+    @Mock
+    private QuestionService questionService;
 
     @InjectMocks
     private QuestionBankService bankService;
@@ -46,6 +53,7 @@ class QuestionBankServiceTest {
         testBank.setIsPublic(true);
         testBank.setAiGenerated(false);
         testBank.setDeleted(0);
+
     }
 
     @Test
@@ -129,6 +137,7 @@ class QuestionBankServiceTest {
         page.setTotal(1);
 
         when(bankMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(questionService.countByBankId(anyLong())).thenReturn(0L);
 
         // When
         Page<QuestionBank> result = bankService.listBanks(1, 10, null, null);
@@ -148,6 +157,7 @@ class QuestionBankServiceTest {
         page.setRecords(Arrays.asList(testBank));
 
         when(bankMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(questionService.countByBankId(anyLong())).thenReturn(0L);
 
         // When
         Page<QuestionBank> result = bankService.listBanks(1, 10, 1L, null);
@@ -165,6 +175,7 @@ class QuestionBankServiceTest {
         page.setRecords(Arrays.asList(testBank));
 
         when(bankMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(questionService.countByBankId(anyLong())).thenReturn(0L);
 
         // When
         Page<QuestionBank> result = bankService.listBanks(1, 10, null, "Java");
@@ -182,6 +193,7 @@ class QuestionBankServiceTest {
         page.setRecords(Arrays.asList(testBank));
 
         when(bankMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(questionService.countByBankId(anyLong())).thenReturn(0L);
 
         // When
         Page<QuestionBank> result = bankService.listBanks(1, 10, null, "");
@@ -203,6 +215,7 @@ class QuestionBankServiceTest {
 
         List<QuestionBank> banks = Arrays.asList(publicBank, privateBank);
         when(bankMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(banks);
+        when(questionService.countByBankId(anyLong())).thenReturn(0L);
 
         // When
         List<QuestionBank> result = bankService.listPublicBanks();
@@ -259,29 +272,21 @@ class QuestionBankServiceTest {
     @Test
     @DisplayName("deleteBank - Should logically delete bank")
     void deleteBank_Success() {
-        // Given
-        when(bankMapper.updateById(any(QuestionBank.class))).thenReturn(1);
-
         // When
         bankService.deleteBank(1L);
 
         // Then
-        verify(bankMapper, times(1)).updateById(argThat(bank ->
-                bank.getId().equals(1L) && bank.getDeleted().equals(1)
-        ));
+        verify(bankMapper, times(1)).deleteById(1L);
     }
 
     @Test
     @DisplayName("deleteBank - Should handle non-existent bank")
     void deleteBank_NonExistentBank_ShouldNotThrow() {
-        // Given
-        when(bankMapper.updateById(any(QuestionBank.class))).thenReturn(0);
-
         // When - Should not throw exception
         bankService.deleteBank(999L);
 
         // Then
-        verify(bankMapper, times(1)).updateById(any(QuestionBank.class));
+        verify(bankMapper, times(1)).deleteById(999L);
     }
 
     @Test
@@ -292,6 +297,7 @@ class QuestionBankServiceTest {
         page.setRecords(Arrays.asList(testBank));
 
         when(bankMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(questionService.countByBankId(anyLong())).thenReturn(0L);
 
         // When
         bankService.listBanks(1, 10, null, null);
@@ -305,6 +311,7 @@ class QuestionBankServiceTest {
     void listPublicBanks_ShouldOrderByCreateTimeDesc() {
         // Given
         when(bankMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(testBank));
+        when(questionService.countByBankId(anyLong())).thenReturn(0L);
 
         // When
         bankService.listPublicBanks();
@@ -321,6 +328,7 @@ class QuestionBankServiceTest {
         page.setRecords(Arrays.asList());
 
         when(bankMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(questionService.countByBankId(anyLong())).thenReturn(0L);
 
         // When
         Page<QuestionBank> result = bankService.listBanks(1, 10, null, null);

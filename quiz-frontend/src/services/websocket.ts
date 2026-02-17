@@ -14,18 +14,21 @@ export class QuizWebSocket {
   private reconnectDelay = 1000
   private handlers: Set<WebSocketEventHandler> = new Set()
   private url: string
+  private static readonly ENABLED = false
 
   constructor(sessionKey: string) {
     this.url = `ws://localhost:8083/quiz/${sessionKey}`
   }
 
   connect(): Promise<void> {
+    if (!QuizWebSocket.ENABLED) {
+      return Promise.resolve()
+    }
     return new Promise((resolve, reject) => {
       try {
         this.ws = new WebSocket(this.url)
 
         this.ws.onopen = () => {
-          console.log('WebSocket connected')
           this.reconnectAttempts = 0
           resolve()
         }
@@ -35,17 +38,15 @@ export class QuizWebSocket {
             const message: WebSocketMessage = JSON.parse(event.data)
             this.handlers.forEach((handler) => handler(message))
           } catch (error) {
-            console.error('Failed to parse WebSocket message:', error)
+            // ignore malformed ws payload
           }
         }
 
         this.ws.onerror = (error) => {
-          console.error('WebSocket error:', error)
           reject(error)
         }
 
         this.ws.onclose = () => {
-          console.log('WebSocket disconnected')
           this.attemptReconnect()
         }
       } catch (error) {
@@ -55,16 +56,13 @@ export class QuizWebSocket {
   }
 
   private attemptReconnect() {
+    if (!QuizWebSocket.ENABLED) return
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
       const delay = this.reconnectDelay * this.reconnectAttempts
 
-      console.log(`Attempting to reconnect in ${delay}ms...`)
-
       setTimeout(() => {
-        this.connect().catch((error) => {
-          console.error('Reconnection failed:', error)
-        })
+        this.connect().catch(() => {})
       }, delay)
     }
   }

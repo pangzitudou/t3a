@@ -39,7 +39,8 @@ public class AIGenerationController {
     @PostMapping(value = "/generate", consumes = "multipart/form-data")
     public Result<Map<String, String>> generateQuestions(
             @RequestPart("file") MultipartFile file,
-            @RequestParam(value = "request", required = false) String requestJson) {
+            @RequestParam(value = "request", required = false) String requestJson,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
 
         log.info("接收题目生成请求: file={}, requestJson={}",
                 file.getOriginalFilename(), requestJson);
@@ -57,7 +58,7 @@ public class AIGenerationController {
         log.info("解析后的请求: count={}, difficulty={}", request.getCount(), request.getDifficulty());
 
         try {
-            String taskId = generationTaskService.submitGenerationTask(file, request);
+            String taskId = generationTaskService.submitGenerationTask(file, request, authorization);
             return Result.success("题目生成任务已提交", Map.of(
                     "taskId", taskId,
                     "message", "任务处理中，预计30秒完成",

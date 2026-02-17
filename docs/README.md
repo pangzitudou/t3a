@@ -26,6 +26,8 @@
 docker compose -f docs/docker-compose.yml up -d
 
 # 2) 后端编译
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export PATH="$JAVA_HOME/bin:$PATH"
 mvn clean install -DskipTests
 
 # 3) 分别启动 4 个后端服务（4 个终端）
@@ -49,4 +51,6 @@ npm run dev
 
 ## 关键说明
 - 前端开发默认通过 Vite 代理直连 core/ai，不经过 gateway。
-- `docs/` 下部分历史文档存在版本差异，遇到冲突请以源码与 `AGENT-HANDBOOK.md` 为准。
+- 回归脚本：
+  - 页面冒烟：`node docs/scripts/e2e-pages-smoke.js`
+  - 功能回归：`node docs/scripts/e2e-feature-regression.js`

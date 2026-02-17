@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import UploadArea from '../components/ui/UploadArea'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
@@ -13,11 +13,14 @@ export default function GeneratePage() {
   const { isAuthenticated } = useAuthStore()
 
   const [file, setFile] = useState<File | null>(null)
-  const [questionCount, setQuestionCount] = useState(20)
-  const [types, setTypes] = useState<string[]>(['single', 'multiple', 'code'])
+  const [bankName, setBankName] = useState('')
+  const [singleCount, setSingleCount] = useState(8)
+  const [multipleCount, setMultipleCount] = useState(6)
+  const [shortCount, setShortCount] = useState(6)
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed'>('medium')
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
+  const questionCount = singleCount + multipleCount + shortCount
 
   if (!isAuthenticated) {
     navigate('/login')
@@ -29,20 +32,14 @@ export default function GeneratePage() {
     toast.success(`File selected: ${selectedFile.name}`)
   }
 
-  const handleTypeToggle = (type: string) => {
-    setTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    )
-  }
-
   const handleGenerate = async () => {
     if (!file) {
       toast.error('Please select a file first')
       return
     }
 
-    if (types.length === 0) {
-      toast.error('Please select at least one question type')
+    if (questionCount <= 0 || questionCount > 50) {
+      toast.error('题目总数需在 1-50 之间')
       return
     }
 
@@ -50,30 +47,57 @@ export default function GeneratePage() {
     setProgress(0)
 
     try {
-      // Simulate progress for demo
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(90, prev + 10))
-      }, 500)
-
-      await aiApi.generateQuestions({
+      const submitData = await aiApi.generateQuestions({
         file,
         questionCount,
-        types: types as any,
+        typeCounts: {
+          single: singleCount,
+          multiple: multipleCount,
+          short: shortCount,
+        },
+        bankName,
         difficulty,
       })
+      const submitPayload = submitData?.taskId ? submitData : submitData?.data
+      const taskId = submitPayload?.taskId
+      if (!taskId) {
+        throw new Error('任务提交失败：未返回 taskId')
+      }
 
-      clearInterval(progressInterval)
-      setProgress(100)
+      // Poll real task status from backend
+      let completed = false
+      for (let i = 0; i < 300; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        const statusRaw = await aiApi.getGenerationProgress(taskId)
+        const statusPayload = statusRaw?.status ? statusRaw : statusRaw?.data ?? statusRaw
+        const statusData =
+          typeof statusPayload === 'string' ? JSON.parse(statusPayload) : statusPayload
+        const currentProgress = Number(statusData?.progress ?? 0)
+        setProgress(Math.max(0, Math.min(100, currentProgress)))
+
+        const status = String(statusData?.status || '').toUpperCase()
+        if (status === 'COMPLETED') {
+          completed = true
+          break
+        }
+        if (status === 'FAILED') {
+          throw new Error(statusData?.message || '题目生成失败')
+        }
+      }
+
+      if (!completed) {
+        throw new Error('题目生成超时，请稍后到题库页查看结果')
+      }
 
       toast.success('Question bank generated successfully!')
-
-      // Navigate to the new bank after a short delay
-      setTimeout(() => {
-        navigate('/banks')
-      }, 1500)
+      navigate('/banks')
     } catch (error: any) {
       console.error('Generation failed:', error)
-      toast.error(error.response?.data?.message || 'Failed to generate questions')
+      if (error?.response?.status === 413) {
+        toast.error('文件过大，请压缩后重试（当前限制 100MB）')
+      } else {
+        toast.error(error.response?.data?.message || error.message || 'Failed to generate questions')
+      }
       setProgress(0)
     } finally {
       setIsGenerating(false)
@@ -82,8 +106,6 @@ export default function GeneratePage() {
 
   return (
     <div className="min-h-screen pb-8">
-      <Toaster position="top-center" />
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -139,54 +161,60 @@ export default function GeneratePage() {
             {/* Question Count */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Number of Questions: <span className="text-primary-600 text-lg">{questionCount}</span>
+                题型数量配置（总数 <span className="text-primary-600 text-lg">{questionCount}</span>）
               </label>
-              <input
-                type="range"
-                min="5"
-                max="50"
-                value={questionCount}
-                onChange={(e) => setQuestionCount(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-500"
-                disabled={isGenerating}
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>5</span>
-                <span>50</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <label className="text-sm text-gray-700">
+                  单选题
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={singleCount}
+                    onChange={(e) => setSingleCount(Number(e.target.value || 0))}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300"
+                    disabled={isGenerating}
+                  />
+                </label>
+                <label className="text-sm text-gray-700">
+                  多选题
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={multipleCount}
+                    onChange={(e) => setMultipleCount(Number(e.target.value || 0))}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300"
+                    disabled={isGenerating}
+                  />
+                </label>
+                <label className="text-sm text-gray-700">
+                  问答题
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={shortCount}
+                    onChange={(e) => setShortCount(Number(e.target.value || 0))}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300"
+                    disabled={isGenerating}
+                  />
+                </label>
               </div>
             </div>
 
-            {/* Question Types */}
+            {/* Bank Name */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Question Types:
+                题库名称（可选）:
               </label>
-              <div className="space-y-2">
-                {[
-                  { value: 'single', label: 'Single Choice', emoji: '🔘' },
-                  { value: 'multiple', label: 'Multiple Choice', emoji: '🔘🔘' },
-                  { value: 'code', label: 'Code Question', emoji: '💻' },
-                ].map((type) => (
-                  <label
-                    key={type.value}
-                    className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      types.includes(type.value)
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 hover:border-primary-300'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={types.includes(type.value)}
-                      onChange={() => handleTypeToggle(type.value)}
-                      disabled={isGenerating}
-                      className="w-5 h-5 accent-primary-500"
-                    />
-                    <span className="text-2xl">{type.emoji}</span>
-                    <span className="font-medium">{type.label}</span>
-                  </label>
-                ))}
-              </div>
+              <input
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="例如：Redis 进阶题库（留空则用文件名）"
+                disabled={isGenerating}
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
+              />
             </div>
 
             {/* Difficulty Level */}
@@ -211,7 +239,7 @@ export default function GeneratePage() {
             <Button
               onClick={handleGenerate}
               isLoading={isGenerating}
-              disabled={!file || types.length === 0}
+              disabled={!file || questionCount <= 0 || questionCount > 50}
               size="lg"
               className="w-full"
             >

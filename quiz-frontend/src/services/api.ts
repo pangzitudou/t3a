@@ -21,12 +21,23 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
-    console.log('[API] Raw response.data:', response.data)
-    const unwrappedData = (response.data as ApiResponse<any>)?.data
-    console.log('[API] Unwrapped data:', unwrappedData)
+    const payload = response.data as ApiResponse<any>
+    if (payload && typeof payload === 'object' && 'code' in payload) {
+      if (payload.code !== 200) {
+        const apiError: any = new Error(payload.message || 'Request failed')
+        apiError.code = payload.code
+        apiError.response = response
+        return Promise.reject(apiError)
+      }
+      return {
+        ...response,
+        data: payload.data,
+      }
+    }
+
     return {
       ...response,
-      data: unwrappedData
+      data: response.data,
     }
   },
   (error) => {

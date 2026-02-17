@@ -117,11 +117,11 @@ Vite 代理（`quiz-frontend/vite.config.ts`）：
 - AI 文档解析（PDF/TXT/DOC/DOCX）+ 调用 LLM 生成题目
 - 生成任务状态写入 Redis（轮询查询）
 
-## 6.2 尚未闭环（代码里有 TODO）
-- AI 生成题目尚未真正回写 `quiz-core` 数据库（目前仅日志输出）
-- Dashboard 统计是占位数据
-- AI 分析接口返回占位数据
-- 提交单题答案接口当前只做会话存在性检查，未完成计分/落库
+## 6.2 当前能力边界
+- AI 生成与回写已闭环，但外部 LLM 输出质量仍可能导致题目质量波动，需要保留重试与去重策略。
+- Dashboard 统计已接入真实会话数据；若存在历史脏数据（如早期会话未提交），需按清洗脚本处理。
+- 主观题已支持要点评分与点评反馈，但仍属于规则匹配型评分，不等价于人工阅卷。
+- WebSocket 实时同步目前在前端默认关闭，用于避免开发阶段噪音；开启前需完成稳定性验证。
 
 ## 7. WebSocket 约定
 - 握手端点: `/ws-quiz`（SockJS）
@@ -140,6 +140,7 @@ Vite 代理（`quiz-frontend/vite.config.ts`）：
 ## 9. 日常排障清单
 - 端口冲突: `lsof -i :8081` 等确认占用
 - 前端 401 循环跳登录: 检查 token 是否存在、是否过期
+- `mvn compile` 报 `TypeTag :: UNKNOWN`: 优先检查 JDK 版本，切换到 JDK 17 再编译
 - AI 生成报错:
   - 检查 `DEEPSEEK_API_KEY` 或 `quiz-ai` 配置
   - 检查 Redis 是否可用（任务状态依赖）

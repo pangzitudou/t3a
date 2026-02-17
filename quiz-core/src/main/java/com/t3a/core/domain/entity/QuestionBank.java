@@ -1,6 +1,7 @@
 package com.t3a.core.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -51,6 +52,12 @@ public class QuestionBank {
      * 逻辑删除
      */
     private Integer deleted;
+
+    /**
+     * 题目数量（非数据库字段，运行时计算）
+     */
+    @TableField(exist = false)
+    private Long questionCount;
 
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

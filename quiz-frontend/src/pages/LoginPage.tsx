@@ -21,21 +21,20 @@ export default function LoginPage() {
     try {
       setLoading(true)
       const response = await login({ username: form.username, password: form.password })
-      console.log('[LoginPage] Full response:', response)
-      console.log('[LoginPage] response.data:', (response as any).data)
-      
       const data = (response as any).data || response
-      console.log('[LoginPage] Final data:', data)
 
       if (data?.userInfo && data?.accessToken) {
         setAuth(data.userInfo, data.accessToken)
         localStorage.setItem('token', data.accessToken)
         localStorage.setItem('user', JSON.stringify(data.userInfo))
         localStorage.setItem('userId', data.userInfo.id)
-        toast.success('登录成功')
-        navigate('/dashboard')
+        toast.dismiss()
+        toast.success('登录成功', {
+          id: 'login-success',
+          duration: 1500,
+        })
+        navigate('/dashboard', { replace: true })
       } else {
-        console.log('[LoginPage] Data check failed:', { userInfo: data?.userInfo, accessToken: data?.accessToken })
         toast.error('登录失败：响应数据格式错误')
       }
     } catch (err: any) {
