@@ -1,54 +1,49 @@
-# Project Overview
-TestAgainAndAgain(T3A): An AI-native distributed online quiz platform. It supports AI-generated question banks from user materials, automated scoring for both objective and subjective questions, and knowledge gap analysis via LLMs.
+# T3A Developer Context (Synchronized)
 
----
+This file is a compact context brief for coding agents. It is aligned with the current repository state.
 
-## Tech Stack
+## Stack
+- Backend: Spring Boot 3.2.2, Spring Cloud Alibaba, Java 17
+- Frontend: React 18.3, Vite 5.4, TypeScript
+- Infra: MySQL, Redis, Nacos, RocketMQ
 
-### Back End (Spring Cloud Alibaba & AI)
-- **Framework**: Spring Boot 3.2+ & Spring Cloud Alibaba 2023.0.x
-- **AI Core**: Spring AI Alibaba (Integrating DeepSeek-V3 / Qwen-Max)
-- **Runtime**: JDK 17 (Virtual Threads enabled for WebSocket/AI task processing)
-- **Database**: MySQL 8.0+ — Persistent storage for questions, users, and results
-- **Cache**: Redis 7.0+ — Session management and real-time score calculation
-- **Messaging**: RocketMQ 5.x — Decoupling AI scoring and data analysis tasks
-- **Communication**: WebSocket (STOMP) — Real-time progress and AI feedback delivery
+## Services
+- `quiz-gateway` -> `:8080`
+- `quiz-core` -> `:8081` with context path `/quiz`
+- `quiz-ai` -> `:8082`
+- `quiz-communication` -> `:8083`
+- Frontend dev -> `:5173`
 
-### Front End (Modern Vibe Stack)
-- **Runtime**: Bun 1.1+ (Package & Build tool)
-- **Framework**: React 19 + Vite 6
-- **Tooling**: Biome (Linting & Formatting)
-- **Key Libraries**: 
-  - `@monaco-editor/react` (For code-based questions)
-  - `framer-motion` (Fluid quiz transitions and AI loading effects)
-  - `shadcn/ui` (Rapid UI prototyping)
+## Routing Reality
+- Frontend dev traffic usually goes through Vite proxy:
+  - `/api/quiz/*` -> `http://localhost:8081/quiz/*`
+  - `/api/ai/*` -> `http://localhost:8082/*`
+- Gateway routes exist for `/api/quiz/**`, `/api/ai/**`, `/api/ws/**` but are not required for local frontend dev.
 
----
+## Auth Model
+- `quiz-core` uses JWT with Spring Security.
+- `/auth/**` is public; others require `Authorization: Bearer <token>`.
 
-## Microservices Architecture
+## Important Implementation Status
+- Working: auth, bank/question CRUD, session start/submit, AI generation task + status polling.
+- Pending/TODO:
+  - save generated AI questions into `quiz-core`
+  - real dashboard statistics
+  - real AI analysis content
+  - full answer scoring persistence in session answer endpoint
 
-- **`quiz-gateway`**: Gateway for routing, auth, and Sentinel-based AI rate limiting.
-- **`quiz-core`**: 
-    - Question bank management (Default & Custom).
-    - Randomization logic and session state tracking.
-- **`quiz-ai`**: 
-    - **Generation**: Parse text files to generate quizzes using RAG.
-    - **Evaluation**: AI-powered scoring for subjective questions.
-    - **Analyst**: Generating student knowledge graphs and improvement suggestions.
-- **`quiz-communication`**: 
-    - Managing real-time WebSocket sessions for live-score updates.
+## Startup (recommended)
+```bash
+docker compose -f docs/docker-compose.yml up -d
+mvn clean install -DskipTests
+# run each backend module with mvn spring-boot:run
+# run frontend with npm run dev in quiz-frontend
+```
 
----
-
-## Project Goals
-- **AI Integration**: Implement full-lifecycle AI (Question Gen -> Scoring -> Analysis).
-- **Asynchronous Flow**: Use RocketMQ to handle long-running AI tasks without blocking users.
-- **Scalability**: Build a system that handles thousands of concurrent quiz-takers.
-- **User Experience**: Ensure sub-second latency for UI updates during quizzes.
-
----
-
-## Development Notes
-- **Prerequisites**: JDK 17, Bun 1.1+, Nacos 2.3+, Redis 7, RocketMQ 5.
-- **Environment**: Configure `AI_DASHSCOPE_API_KEY` or `DEEPSEEK_API_KEY` in Nacos.
-- **Optimization**: All services must use `spring.threads.virtual.enabled=true`.
+## Documentation Sync Policy
+When code changes affect behavior, update docs in the same change set:
+- `docs/README.md`
+- `docs/STARTUP-GUIDE.md`
+- `docs/ARCHITECTURE.md`
+- `docs/PROJECT-SUMMARY.md`
+- `docs/AGENT-HANDBOOK.md`

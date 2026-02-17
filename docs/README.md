@@ -1,199 +1,52 @@
 # TestAgainAndAgain (T3A)
 
-AI-native distributed online quiz platform with intelligent question generation, automated scoring, and knowledge gap analysis.
+本项目是一个 AI 生成题库的微服务 Web 应用。该文档已按当前源码对齐，优先给出可直接运行和联调的路径。
 
-## 🏗️ Architecture
+## 当前技术栈（以代码为准）
+- 后端: Spring Boot 3.2.2, Spring Cloud Alibaba 2023.0.1.0, Java 17
+- 数据与中间件: MySQL 8, Redis 7, Nacos 2.3, RocketMQ 5
+- 前端: React 18.3 + Vite 5.4 + TypeScript + Zustand + Axios
 
-### Microservices
+## 服务与端口
+- `quiz-gateway`: `8080`
+- `quiz-core`: `8081`（`context-path=/quiz`）
+- `quiz-ai`: `8082`
+- `quiz-communication`: `8083`
+- `quiz-frontend`: `5173`
 
-```
-test-again-and-again/
-├── quiz-gateway/           # API Gateway (Port: 8080)
-│   ├── Routing & Load Balancing
-│   ├── Authentication
-│   └── Sentinel Rate Limiting
-│
-├── quiz-core/              # Core Service (Port: 8081)
-│   ├── Question Bank Management
-│   ├── Quiz Session Tracking
-│   └── Randomization Logic
-│
-├── quiz-ai/                # AI Service (Port: 8082)
-│   ├── Question Generation (Spring AI + RAG)
-│   ├── Subjective Answer Scoring
-│   └── Knowledge Graph Analysis
-│
-├── quiz-communication/     # Communication Service (Port: 8083)
-│   ├── WebSocket (STOMP) Management
-│   └── Real-time Progress Updates
-│
-└── quiz-common/            # Common Utilities
-    ├── Domain Models
-    ├── Constants
-    └── Response Wrappers
-```
+## 先看这个手册
+- 推荐先读: [AGENT-HANDBOOK.md](./AGENT-HANDBOOK.md)
+  - 包含真实 API 路径、代理改写规则、鉴权要点、已实现/未实现清单、常见坑。
 
-## 🚀 Tech Stack
-
-### Backend
-- **Framework**: Spring Boot 3.2+ & Spring Cloud Alibaba 2023.0.x
-- **AI**: Spring AI Alibaba (DeepSeek-V3 / Qwen-Max)
-- **Runtime**: JDK 17 with Virtual Threads
-- **Database**: MySQL 8.0+ (via MyBatis Plus & Druid)
-- **Cache**: Redis 7.0+
-- **Messaging**: RocketMQ 5.x
-- **Service Discovery**: Nacos 2.3+
-- **API Gateway**: Spring Cloud Gateway
-- **Rate Limiting**: Sentinel
-- **WebSocket**: STOMP over SockJS
-
-### Frontend ✅
-- **Runtime**: Node.js 18+ / Bun 1.1+
-- **Framework**: React 18 + Vite 6
-- **Styling**: Tailwind CSS 3.4
-- **State Management**: TanStack React Query
-- **Routing**: React Router 7
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **HTTP Client**: Axios
-
-## 📦 Quick Start
-
-### Prerequisites
-```bash
-# Backend
-- JDK 17+
-- Maven 3.8+
-- Docker & Docker Compose (推荐)
-
-# Frontend
-- Node.js 18+ / Bun 1.1+
-- npm / bun
-```
-
-### 🚀 一键启动（推荐）
+## 快速启动（推荐）
+在项目根目录执行：
 
 ```bash
-# 1. 检查环境
-./check-env.sh
+# 1) 基础设施
+docker compose -f docs/docker-compose.yml up -d
 
-# 2. 启动后端
-./t3a-manager.sh start
+# 2) 后端编译
+mvn clean install -DskipTests
 
-# 3. 启动前端（新终端）
+# 3) 分别启动 4 个后端服务（4 个终端）
+cd quiz-gateway && mvn spring-boot:run
+cd quiz-core && mvn spring-boot:run
+cd quiz-ai && mvn spring-boot:run
+cd quiz-communication && mvn spring-boot:run
+
+# 4) 前端
 cd quiz-frontend
-./start-frontend.sh
+npm install
+npm run dev
 ```
 
-### 🌐 访问地址
+## 访问地址
+- 前端: `http://localhost:5173`
+- 网关: `http://localhost:8080`
+- Core API 文档: `http://localhost:8081/doc.html`
+- AI API 文档: `http://localhost:8082/doc.html`
+- Nacos: `http://localhost:8848/nacos`（`nacos/nacos`）
 
-**前端**:
-- 应用首页: http://localhost:5173
-
-**后端 API**:
-- API Gateway: http://localhost:8080
-- Core API 文档: http://localhost:8081/doc.html
-- AI API 文档: http://localhost:8082/doc.html
-
-**基础设施**:
-- Nacos 控制台: http://localhost:8848/nacos (nacos/nacos)
-- RocketMQ 控制台: http://localhost:8180
-
-📖 **详细启动指南**: [STARTUP-GUIDE.md](STARTUP-GUIDE.md:1)
-
-## 🔧 Key Configuration
-
-### Virtual Threads (JDK 17+)
-All services are configured to use virtual threads for high concurrency:
-
-```yaml
-spring:
-  threads:
-    virtual:
-      enabled: true
-```
-
-### Nacos Namespace
-All services use the `test-again-and-again` namespace for isolation.
-
-### API Gateway Routes
-
-| Service Path | Target Service | Description |
-|-------------|---------------|-------------|
-| `/api/quiz/**` | quiz-core | Question bank & quiz management |
-| `/api/ai/**` | quiz-ai | AI generation & analysis |
-| `/api/ws/**` | quiz-communication | WebSocket connections |
-
-## 📚 API Documentation
-
-Each service provides Swagger/Knife4j documentation:
-
-- Quiz Core: http://localhost:8081/doc.html
-- Quiz AI: http://localhost:8082/doc.html
-
-## 🔄 Data Flow
-
-1. **Question Generation**:
-   - User uploads learning materials → quiz-ai
-   - AI parses & generates questions (Spring AI + RAG)
-   - RocketMQ async processing
-   - Results saved to quiz-core
-
-2. **Quiz Execution**:
-   - User starts quiz → quiz-core
-   - WebSocket connection → quiz-communication
-   - Real-time progress updates via STOMP
-
-3. **AI Scoring & Analysis**:
-   - Submit answers → quiz-ai
-   - Objective: Redis fast calculation
-   - Subjective: AI semantic analysis
-   - Generate knowledge graph → quiz-communication (WebSocket push)
-
-## 🎯 Project Goals
-
-- ✅ **Microservices Setup**: Complete basic architecture
-- 🚧 **AI Integration**: Implement Spring AI for generation & scoring
-- 🚧 **Real-time Communication**: WebSocket session management
-- 🚧 **Async Processing**: RocketMQ message handling
-- 🚧 **Frontend Development**: React 19 + Vite UI
-- 🚧 **Performance Optimization**: Virtual threads + Redis caching
-- 🚧 **Deployment**: Docker + Kubernetes
-
-## 📝 Development Notes
-
-### Code Structure
-Each microservice follows a standard layered architecture:
-```
-src/main/java/com/t3a/{service}/
-├── controller/     # REST Controllers
-├── service/        # Business Logic
-├── mapper/         # MyBatis Mappers (if needed)
-├── domain/
-│   ├── entity/     # Database Entities
-│   ├── dto/        # Data Transfer Objects
-│   └── vo/         # View Objects
-├── config/         # Configuration Classes
-└── {Service}Application.java
-```
-
-### Testing
-```bash
-# Unit tests
-mvn test
-
-# Integration tests (requires running services)
-mvn verify
-```
-
-## 🤝 Contributing
-
-Please refer to [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation.
-
-## 📄 License
-
-MIT License
-
----
-
-**Generated with Claude Code** 🤖
+## 关键说明
+- 前端开发默认通过 Vite 代理直连 core/ai，不经过 gateway。
+- `docs/` 下部分历史文档存在版本差异，遇到冲突请以源码与 `AGENT-HANDBOOK.md` 为准。
