@@ -1,0 +1,41 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: quiz-communication
+  # 虚拟线程配置（JDK 17+）
+  threads:
+    virtual:
+      enabled: true
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: test-again-and-again
+      config:
+        server-addr: localhost:8848
+        namespace: test-again-and-again
+        file-extension: yml
+        import-check:
+          enabled: false  # 禁用 Nacos 配置导入检查
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3000ms
+
+# RocketMQ 配置
+rocketmq:
+  name-server: localhost:9876
+
+# 日志配置
+logging:
+  level:
+    com.t3a.communication: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"

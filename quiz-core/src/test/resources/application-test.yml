@@ -1,0 +1,56 @@
+# 测试环境配置
+
+server:
+  port: 0  # 随机端口
+
+spring:
+  application:
+    name: quiz-core-test
+
+  # 使用H2内存数据库进行测试
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+
+  # H2 控制台（可选）
+  h2:
+    console:
+      enabled: true
+
+  # SQL 初始化
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  # Redis使用嵌入式
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+# MyBatis Plus
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT 配置
+jwt:
+  secret: TestSecretKey404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 3600000  # 1小时
+  refresh-expiration: 7200000  # 2小时
+
+# 日志
+logging:
+  level:
+    com.t3a.core: DEBUG
+    org.springframework.security: DEBUG

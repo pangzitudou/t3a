@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T3A UI/UX 设计预览 - TestAgainAndAgain</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .screens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .screen {
+            background: white;
+            border-radius: 20px;
+            padding: 0;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .screen:hover {
+            transform: translateY(-5px);
+        }
+
+        .screen-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+
+        .screen-body {
+            padding: 30px;
+        }
+
+        /* 首页 - 登录/注册 */
+        .hero {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .hero h2 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .hero p {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            margin: 10px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        /* 题库生成页 */
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #f8f9ff;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            background: #eef0ff;
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .ai-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+
+        /* 测验进行中页面 */
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            height: 8px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            width: 30%;
+            transition: width 0.5s ease;
+        }
+
+        .question-card {
+            background: #f8f9ff;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .question-number {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .option {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        /* 结果页面 */
+        .score-display {
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .score-number {
+            font-size: 5em;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .analysis-card {
+            background: #f8f9ff;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .analysis-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .knowledge-tag {
+            display: inline-block;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+
+        .weakness-tag {
+            background: #fff3f3;
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        .strength-tag {
+            background: #f0fff4;
+            border-color: #51cf66;
+            color: #51cf66;
+        }
+
+        /* 仪表板 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .chart-placeholder {
+            background: #f8f9ff;
+            height: 200px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-style: italic;
+        }
+
+        /* WebSocket 实时更新指示器 */
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            background: #51cf66;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            padding: 15px;
+            background: #f8f9ff;
+            margin: 10px 0;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            display: inline-block;
+            width: 25px;
+            height: 25px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .flow-diagram {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .flow-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+
+        .flow-content {
+            flex: 1;
+        }
+
+        .flow-content h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .flow-content p {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .arrow {
+            text-align: center;
+            color: #667eea;
+            font-size: 2em;
+            margin: -10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 TestAgainAndAgain (T3A) UI/UX 设计预览</h1>
+
+        <div class="screens-grid">
+            <!-- 屏幕 1: 首页登录 -->
+            <div class="screen">
+                <div class="screen-header">
+                    📱 首页 - 欢迎界面
+                </div>
+                <div class="screen-body hero">
+                    <h2>TestAgainAndAgain</h2>
+                    <p>AI 驱动的智能测验平台<br>从学习到精通，每一次测试都是进步</p>
+                    <div>
+                        <button class="btn btn-primary">开始测验</button>
+                        <button class="btn btn-secondary">创建题库</button>
+                    </div>
+                    <ul class="feature-list" style="margin-top: 40px; text-align: left;">
+                        <li>AI 自动生成题库 - 上传材料即可</li>
+                        <li>智能批改主观题 - 深度分析答案</li>
+                        <li>个性化知识图谱 - 精准定位薄弱点</li>
+                        <li>实时进度推送 - WebSocket 即时反馈</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 屏幕 2: AI 题库生成 -->
+            <div class="screen">
+                <div class="screen-header">
+                    🤖 AI 题库生成器 <span class="ai-badge">Spring AI</span>
+                </div>
+                <div class="screen-body">
+                    <div class="upload-area">
+                        <div class="upload-icon">📄</div>
+                        <h3>拖拽上传学习材料</h3>
+                        <p style="color: #999; margin-top: 10px;">支持 PDF, TXT, DOCX 格式</p>
+                    </div>
+
+                    <h4 style="margin-bottom: 15px;">生成设置</h4>
+                    <div style="background: #f8f9ff; padding: 20px; border-radius: 10px;">
+                        <label style="display: block; margin-bottom: 15px;">
+                            <strong>题目数量：</strong>
+                            <input type="range" min="5" max="50" value="20" style="width: 100%; margin-top: 5px;">
+                            <span style="color: #667eea;">20 题</span>
+                        </label>
+
+                        <label style="display: block; margin-bottom: 15px;">
+                            <strong>题型分布：</strong><br>
+                            <input type="checkbox" checked> 单选题 (40%)<br>
+                            <input type="checkbox" checked> 多选题 (30%)<br>
+                            <input type="checkbox" checked> 简答题 (30%)
+                        </label>
+
+                        <label style="display: block; margin-bottom: 15px;">
+                            <strong>难度级别：</strong><br>
+                            <select style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+                                <option>简单</option>
+                                <option selected>中等</option>
+                                <option>困难</option>
+                                <option>混合</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 20px;">
+                        🚀 开始生成 (预计 30 秒)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 屏幕 3: 测验进行中 -->
+            <div class="screen">
+                <div class="screen-header">
+                    ✏️ 测验进行中 <span class="live-indicator"><span class="pulse"></span>实时同步</span>
+                </div>
+                <div class="screen-body">
+                    <div class="quiz-header">
+                        <div>
+                            <strong>Spring Cloud 基础测验</strong><br>
+                            <small style="color: #999;">已完成 3/10 题</small>
+                        </div>
+                        <div style="font-size: 1.5em;">⏱️ 12:34</div>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+
+                    <div class="question-card">
+                        <div class="question-number">第 4 题 / 单选题</div>
+                        <div class="question-text">
+                            在 Spring Cloud Alibaba 中，Nacos 的主要作用是什么？
+                        </div>
+
+                        <div class="option">A. 消息队列中间件</div>
+                        <div class="option selected">B. 服务注册与配置中心</div>
+                        <div class="option">C. 分布式事务管理</div>
+                        <div class="option">D. API 网关</div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                        <button class="btn btn-secondary">上一题</button>
+                        <button class="btn btn-primary">下一题 →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 屏幕 4: AI 评分与分析 -->
+            <div class="screen">
+                <div class="screen-header">
+                    📊 AI 智能分析报告 <span class="ai-badge">DeepSeek-V3</span>
+                </div>
+                <div class="screen-body">
+                    <div class="score-display">
+                        <div>您的成绩</div>
+                        <div class="score-number">85</div>
+                        <div>超越了 78% 的用户</div>
+                    </div>
+
+                    <div class="analysis-card">
+                        <h3>💪 掌握较好的知识点</h3>
+                        <div>
+                            <span class="knowledge-tag strength-tag">Spring Boot 基础</span>
+                            <span class="knowledge-tag strength-tag">Nacos 配置</span>
+                            <span class="knowledge-tag strength-tag">微服务架构</span>
+                        </div>
+                    </div>
+
+                    <div class="analysis-card">
+                        <h3>⚠️ 需要加强的领域</h3>
+                        <div>
+                            <span class="knowledge-tag weakness-tag">RocketMQ 消息流</span>
+                            <span class="knowledge-tag weakness-tag">Sentinel 限流</span>
+                        </div>
+                        <p style="margin-top: 15px; color: #666; line-height: 1.6;">
+                            <strong>AI 建议：</strong>建议重点复习 RocketMQ 的消息确认机制和 Sentinel 的熔断降级策略。
+                            推荐先完成官方文档第 3-5 章节的学习，然后针对性练习。
+                        </p>
+                    </div>
+
+                    <button class="btn btn-primary" style="width: 100%;">
+                        查看错题详解
+                    </button>
+                </div>
+            </div>
+
+            <!-- 屏幕 5: 个人仪表板 -->
+            <div class="screen">
+                <div class="screen-header">
+                    📈 学习仪表板
+                </div>
+                <div class="screen-body">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">12</div>
+                            <div class="stat-label">已完成测验</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <div class="stat-number">82</div>
+                            <div class="stat-label">平均分</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <div class="stat-number">6.5h</div>
+                            <div class="stat-label">学习时长</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-bottom: 15px;">📉 成绩趋势</h4>
+                    <div class="chart-placeholder">
+                        折线图：显示最近 10 次测验的分数变化
+                    </div>
+
+                    <h4 style="margin: 25px 0 15px;">🎯 知识图谱</h4>
+                    <div class="chart-placeholder">
+                        雷达图：展示各知识点掌握程度<br>
+                        (Spring Boot, Nacos, RocketMQ, Redis, MySQL...)
+                    </div>
+
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 20px;">
+                        生成学习计划
+                    </button>
+                </div>
+            </div>
+
+            <!-- 屏幕 6: 代码题界面 -->
+            <div class="screen">
+                <div class="screen-header">
+                    💻 编程题作答 <span class="ai-badge">Monaco Editor</span>
+                </div>
+                <div class="screen-body">
+                    <div class="question-card">
+                        <div class="question-number">第 8 题 / 编程题</div>
+                        <div class="question-text" style="font-size: 1.1em;">
+                            实现一个简单的 Spring Boot 健康检查接口，返回服务状态和当前时间。
+                        </div>
+                    </div>
+
+                    <div style="background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 10px; font-family: 'Consolas', monospace; font-size: 0.9em; margin-bottom: 20px;">
+                        <div style="color: #569cd6;">@RestController</div>
+                        <div style="color: #569cd6;">@RequestMapping</div>
+                        <div>(<span style="color: #ce9178;">"/api/health"</span>)</div>
+                        <div><span style="color: #569cd6;">public class</span> <span style="color: #4ec9b0;">HealthController</span> {</div>
+                        <div style="margin-left: 20px;">
+                            <div><span style="color: #569cd6;">@GetMapping</span></div>
+                            <div><span style="color: #569cd6;">public</span> Map&lt;String, Object&gt; check() {</div>
+                            <div style="margin-left: 20px; color: #6a9955;">// 在此处编写代码_</div>
+                            <div style="margin-left: 20px;">}</div>
+                        </div>
+                        <div>}</div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" style="flex: 1;">▶️ 运行代码</button>
+                        <button class="btn btn-primary" style="flex: 1;">提交答案</button>
+                    </div>
+
+                    <div style="background: #f0fff4; border-left: 4px solid #51cf66; padding: 15px; margin-top: 20px; border-radius: 5px;">
+                        <strong style="color: #51cf66;">✓ 测试通过</strong><br>
+                        <small style="color: #666;">3/3 测试用例通过</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用户流程图 -->
+        <div class="flow-diagram">
+            <h2 style="text-align: center; color: #667eea; margin-bottom: 30px;">🔄 完整用户旅程</h2>
+
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>上传学习材料</h4>
+                    <p>用户上传 PDF/TXT 文档，Spring AI 通过 RAG 技术解析内容</p>
+                </div>
+            </div>
+            <div class="arrow">↓</div>
+
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>AI 生成题库</h4>
+                    <p>DeepSeek-V3 / Qwen-Max 自动生成多种题型，RocketMQ 异步处理</p>
+                </div>
+            </div>
+            <div class="arrow">↓</div>
+
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>开始测验</h4>
+                    <p>用户答题过程中，WebSocket (STOMP) 实时同步进度到服务器</p>
+                </div>
+            </div>
+            <div class="arrow">↓</div>
+
+            <div class="flow-step">
+                <div class="flow-number">4</div>
+                <div class="flow-content">
+                    <h4>智能评分</h4>
+                    <p>客观题 Redis 快速计算，主观题由 AI 深度分析语义并给出评分</p>
+                </div>
+            </div>
+            <div class="arrow">↓</div>
+
+            <div class="flow-step">
+                <div class="flow-number">5</div>
+                <div class="flow-content">
+                    <h4>生成分析报告</h4>
+                    <p>AI 分析错题模式，构建知识图谱，推送个性化学习建议</p>
+                </div>
+            </div>
+            <div class="arrow">↓</div>
+
+            <div class="flow-step">
+                <div class="flow-number">6</div>
+                <div class="flow-content">
+                    <h4>持续改进</h4>
+                    <p>用户根据建议针对性练习，系统追踪进步轨迹</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="background: white; padding: 30px; border-radius: 15px; margin-top: 30px;">
+            <h2 style="color: #667eea; margin-bottom: 20px;">🎨 设计理念</h2>
+            <ul class="feature-list">
+                <li><strong>渐变色设计</strong> - 紫色系渐变体现科技与教育的融合</li>
+                <li><strong>卡片化布局</strong> - 清晰区分功能模块，提升可读性</li>
+                <li><strong>实时反馈</strong> - WebSocket 连接状态可视化，增强用户信任感</li>
+                <li><strong>AI 标识</strong> - 所有 AI 功能均带有醒目标签 (Spring AI / DeepSeek)</li>
+                <li><strong>流畅动效</strong> - 使用 Framer Motion 实现页面过渡和加载动画</li>
+                <li><strong>响应式设计</strong> - 自适应桌面/平板/移动端</li>
+            </ul>
+        </div>
+
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center;">
+            <h3 style="margin-bottom: 15px;">🚀 技术亮点</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                <div>
+                    <div style="font-size: 2em;">⚡</div>
+                    <strong>虚拟线程</strong><br>
+                    <small>JDK 17 高并发处理</small>
+                </div>
+                <div>
+                    <div style="font-size: 2em;">🤖</div>
+                    <strong>Spring AI</strong><br>
+                    <small>统一 AI 能力接入</small>
+                </div>
+                <div>
+                    <div style="font-size: 2em;">📡</div>
+                    <strong>WebSocket</strong><br>
+                    <small>实时双向通信</small>
+                </div>
+                <div>
+                    <div style="font-size: 2em;">🎯</div>
+                    <strong>微服务</strong><br>
+                    <small>解耦可扩展架构</small>
+                </div>
+            </div>
+        </div>
+
+        <p style="text-align: center; color: white; margin-top: 30px; font-size: 0.9em;">
+            © 2026 TestAgainAndAgain (T3A) - AI 驱动的智能测验平台
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,92 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: quiz-gateway
+  # 虚拟线程配置（JDK 17+）
+  threads:
+    virtual:
+      enabled: true
+  main:
+    web-application-type: reactive
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: test-again-and-again
+      config:
+        server-addr: localhost:8848
+        namespace: test-again-and-again
+        file-extension: yml
+        import-check:
+          enabled: false  # 禁用 Nacos 配置导入检查
+
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      routes:
+        # Quiz Core Service
+        - id: quiz-core
+          uri: lb://quiz-core
+          predicates:
+            - Path=/api/quiz/**
+          filters:
+            - StripPrefix=1
+
+        # Quiz AI Service
+        - id: quiz-ai
+          uri: lb://quiz-ai
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=1
+
+        # Quiz Communication Service
+        - id: quiz-communication
+          uri: lb://quiz-communication
+          predicates:
+            - Path=/api/ws/**
+          filters:
+            - StripPrefix=1
+
+      # 全局 CORS 配置 (禁用 - 由各个微服务自己处理)
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            # 空配置，不添加任何CORS头
+            allowedOrigins: []
+            allowedMethods: []
+            allowedHeaders: []
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3000ms
+
+# Sentinel 配置
+spring.cloud.sentinel:
+  transport:
+    dashboard: localhost:8858
+  datasource:
+    ds1:
+      nacos:
+        server-addr: localhost:8848
+        dataId: ${spring.application.name}-sentinel
+        groupId: DEFAULT_GROUP
+        data-type: json
+        rule-type: flow
+
+# 日志配置
+logging:
+  level:
+    com.t3a.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"

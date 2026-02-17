@@ -1,0 +1,91 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: quiz-ai
+
+  main:
+    allow-bean-definition-overriding: true
+
+  threads:
+    virtual:
+      enabled: true
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        enabled: false
+      config:
+        enabled: false
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3000ms
+
+  ai:
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY:sk-demo-key}
+      base-url: https://api.deepseek.com
+      chat:
+        enabled: true
+    openai:
+      chat:
+        enabled: false
+
+# 自定义 DeepSeek 配置
+app:
+  models:
+    deepseek:
+      base-url: https://api.deepseek.com
+      api-key: sk-f7834ae5538b4990af51be9697b134a7  # 你的 DeepSeek Key
+      model: deepseek-chat
+      temperature: 0.7
+
+    # 自定义 Kimi (Moonshot) 配置
+    kimi:
+      base-url: https://api.moonshot.cn/v1
+      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxx  # 你的 Kimi Key
+      model: moonshot-v1-8k
+      temperature: 0.7
+
+# 备用 DeepSeek 配置（可选）
+# deepseek:
+#   api-key: ${DEEPSEEK_API_KEY:your-api-key-here}
+#   base-url: https://api.deepseek.com
+
+# RocketMQ 配置
+rocketmq:
+  name-server: localhost:9876
+  producer:
+    group: quiz-ai-producer
+    send-message-timeout: 3000
+    retry-times-when-send-failed: 2
+
+# Knife4j 配置
+knife4j:
+  enable: true
+  openapi:
+    title: Quiz AI API
+    description: AI-powered question generation and analysis
+    version: 1.0.0
+    contact:
+      name: T3A Team
+
+# 日志配置
+logging:
+  level:
+    com.t3a.ai: DEBUG
+    com.alibaba.cloud.ai: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"

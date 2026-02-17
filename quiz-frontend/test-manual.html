@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Test - Manual Debug</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #f0f0f0;
+        }
+        h1 { color: #4CAF50; }
+        .test-section {
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .test-button:hover { background: #45a049; }
+        .result {
+            background: #1e1e1e;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .error { border-left-color: #f44336; }
+        .success { border-left-color: #4CAF50; }
+        .info { border-left-color: #2196F3; }
+        .timestamp { color: #888; font-size: 12px; }
+        .clear-btn {
+            background: #f44336;
+        }
+        .clear-btn:hover { background: #d32f2f; }
+        .nav-button {
+            background: #2196F3;
+        }
+        .nav-button:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Registration 403 Debug Tool</h1>
+
+    <div class="test-section">
+        <h2>Navigation</h2>
+        <button class="test-button nav-button" onclick="window.location.href='/register'">
+            Go to Registration Page
+        </button>
+        <button class="test-button nav-button" onclick="window.location.href='/'">
+            Go to Home
+        </button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Actions</h2>
+        <button class="test-button" onclick="testFetch()">
+            Test 1: Manual fetch() Request
+        </button>
+        <button class="test-button" onclick="testAxiosDirect()">
+            Test 2: Direct Axios Request
+        </button>
+        <button class="test-button" onclick="testAuthAPI()">
+            Test 3: Using auth.register()
+        </button>
+        <button class="test-button clear-btn" onclick="clearResults()">
+            Clear Results
+        </button>
+        <button class="test-button clear-btn" onclick="clearToken()">
+            Clear localStorage Token
+        </button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Current State</h2>
+        <div id="state"></div>
+    </div>
+
+    <script type="module">
+        // Import axios to test
+        const axiosScript = document.createElement('script');
+        axiosScript.src = 'https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js';
+        document.head.appendChild(axiosScript);
+
+        axiosScript.onload = () => {
+            console.log('Axios loaded from CDN');
+        };
+
+        function addResult(message, type = 'info', data = null) {
+            const resultsDiv = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+
+            let content = `[${timestamp}] ${message}`;
+            if (data) {
+                content += '\n' + JSON.stringify(data, null, 2);
+            }
+
+            resultDiv.textContent = content;
+            resultsDiv.insertBefore(resultDiv, resultsDiv.firstChild);
+            console.log(`[${type.toUpperCase()}]`, message, data || '');
+        }
+
+        function updateState() {
+            const stateDiv = document.getElementById('state');
+            const token = localStorage.getItem('token');
+            const cookies = document.cookie;
+
+            stateDiv.innerHTML = `
+                <div class="result info">
+                    <strong>localStorage token:</strong> ${token ? 'EXISTS' : 'NONE'}
+                    ${token ? `\nToken (first 50 chars): ${token.substring(0, 50)}...` : ''}
+                    <strong>\nCookies:</strong> ${cookies || 'NONE'}
+                    <strong>\nCurrent URL:</strong> ${window.location.href}
+                    <strong>\nUser Agent:</strong> ${navigator.userAgent}
+                </div>
+            `;
+        }
+
+        window.clearResults = function() {
+            document.getElementById('results').innerHTML = '';
+            addResult('Results cleared', 'info');
+        };
+
+        window.clearToken = function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                localStorage.removeItem('token');
+                addResult('Token removed from localStorage', 'success', { removedToken: token.substring(0, 50) + '...' });
+            } else {
+                addResult('No token found in localStorage', 'info');
+            }
+            updateState();
+        };
+
+        window.testFetch = async function() {
+            const timestamp = Date.now();
+            const userData = {
+                username: `fetchtest-${timestamp}`,
+                password: '123456',
+                email: `fetchtest-${timestamp}@test.com`,
+                nickname: 'FetchTest'
+            };
+
+            addResult('Test 1: Starting fetch() request...', 'info');
+
+            try {
+                const response = await fetch('/api/quiz/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addResult('✅ fetch() SUCCESS', 'success', {
+                        status: response.status,
+                        data: data
+                    });
+                } else {
+                    addResult('❌ fetch() FAILED', 'error', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        data: data
+                    });
+                }
+            } catch (error) {
+                addResult('❌ fetch() ERROR', 'error', {
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+
+            updateState();
+        };
+
+        window.testAxiosDirect = async function() {
+            const timestamp = Date.now();
+            const userData = {
+                username: `axiostest-${timestamp}`,
+                password: '123456',
+                email: `axiostest-${timestamp}@test.com`,
+                nickname: 'AxiosTest'
+            };
+
+            addResult('Test 2: Starting direct Axios request...', 'info');
+
+            // Create axios instance similar to api.ts
+            const api = window.axios.create({
+                baseURL: '/api',
+                timeout: 30000,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            // Log interceptor
+            api.interceptors.request.use(config => {
+                console.log('[Axios Request]', config.method?.toUpperCase(), config.url, {
+                    headers: config.headers,
+                    data: config.data
+                });
+                addResult(`Axios Request: ${config.method?.toUpperCase()} ${config.url}`, 'info', {
+                    headers: config.headers,
+                    data: config.data
+                });
+                return config;
+            });
+
+            api.interceptors.response.use(
+                response => {
+                    console.log('[Axios Response]', response.status, response.data);
+                    addResult(`Axios Response: ${response.status}`, 'success', {
+                        data: response.data,
+                        headers: response.headers
+                    });
+                    return response;
+                },
+                error => {
+                    console.error('[Axios Error]', error);
+                    addResult('Axios Error', 'error', {
+                        message: error.message,
+                        response: error.response ? {
+                            status: error.response.status,
+                            data: error.response.data,
+                            headers: error.response.headers
+                        } : null,
+                        config: error.config ? {
+                            url: error.config.url,
+                            method: error.config.method,
+                            headers: error.config.headers
+                        } : null
+                    });
+                    throw error;
+                }
+            );
+
+            try {
+                const response = await api.post('/quiz/auth/register', userData);
+                addResult('✅ Axios SUCCESS', 'success', {
+                    status: response.status,
+                    data: response.data
+                });
+            } catch (error) {
+                // Error already logged in interceptor
+            }
+
+            updateState();
+        };
+
+        window.testAuthAPI = async function() {
+            const timestamp = Date.now();
+            const userData = {
+                username: `authtest-${timestamp}`,
+                password: '123456',
+                email: `authtest-${timestamp}@test.com`,
+                nickname: 'AuthTest'
+            };
+
+            addResult('Test 3: This would test the auth.register() function from the app', 'info');
+            addResult('Please navigate to /register to test the actual registration flow', 'info');
+            updateState();
+        };
+
+        // Initial state display
+        updateState();
+        addResult('Debug tool loaded successfully', 'success');
+        addResult('Click test buttons to diagnose 403 error', 'info');
+    </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+server:
+  port: 7777
+
+spring:
+  application:
+    name: quiz-gateway
+
+  threads:
+    virtual:
+      enabled: true
+
+  main:
+    web-application-type: reactive
+
+  cloud:
+    nacos:
+      discovery:
+        enabled: false  # Disable Nacos discovery for simple mode
+      config:
+        enabled: false  # Disable Nacos config for simple mode
+
+    gateway:
+      routes:
+        # Quiz Core Service - direct routing without service discovery
+        # quiz-core has context-path: /quiz
+        - id: quiz-core
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/quiz/**
+          filters:
+            - StripPrefix=1
+
+        # Quiz AI Service
+        # quiz-ai has NO context path
+        - id: quiz-ai
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=2
+
+        # Quiz Communication Service
+        # quiz-communication has context-path: /ws (assumed)
+        - id: quiz-communication
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/ws/**
+          filters:
+            - StripPrefix=1
+
+      # 全局 CORS 配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3000ms
+
+# 日志配置
+logging:
+  level:
+    com.t3a.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"

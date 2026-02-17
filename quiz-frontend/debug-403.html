@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403错误深度诊断</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #444; border-radius: 5px; background: #2d2d2d; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; cursor: pointer; margin: 5px; border-radius: 4px; }
+        button:hover { background: #45a049; }
+        pre { white-space: pre-wrap; word-wrap: break-word; font-size: 12px; background: #1e1e1e; padding: 10px; border-radius: 4px; }
+        .step { margin: 10px 0; padding: 10px; border-left: 3px solid #4CAF50; background: #1e3a1e; }
+        .error { border-left-color: #f44336; background: #3a1e1e; }
+    </style>
+</head>
+<body>
+    <h1>🔬 403错误深度诊断工具</h1>
+    <p>这个工具会逐步测试不同的请求配置，找出导致403的确切原因。</p>
+
+    <div class="section">
+        <button onclick="runAllTests()">运行所有测试</button>
+        <button onclick="document.getElementById('results').innerHTML=''">清除结果</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const results = [];
+
+        function addResult(step, status, message, details) {
+            results.push({ step, status, message, details, time: new Date().toLocaleTimeString() });
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = results.map(r => `
+                <div class="step ${r.status === 'error' ? 'error' : ''}">
+                    <strong>步骤 ${r.step}:</strong> ${r.status === 'success' ? '✅' : '❌'} ${r.message}
+                    <pre>${JSON.stringify(r.details, null, 2)}</pre>
+                    <small>${r.time}</small>
+                </div>
+            `).join('');
+        }
+
+        async function test1_BasicFetch() {
+            const username = `test1-${Date.now().toString().slice(-6)}`;
+            try {
+                const response = await fetch('/api/quiz/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username, password: '123456',
+                        email: `${username}@test.com`, nickname: 'T1'
+                    })
+                });
+                const data = await response.json();
+                addResult(1, response.ok ? 'success' : 'error',
+                    `基础Fetch测试 - ${response.status}`,
+                    {status: response.status, data}
+                );
+            } catch (error) {
+                addResult(1, 'error', '基础Fetch测试 - 网络错误', {error: error.message});
+            }
+        }
+
+        async function test2_FetchWithCommonHeaders() {
+            const username = `test2-${Date.now().toString().slice(-6)}`;
+            try {
+                const response = await fetch('/api/quiz/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json, text/plain, */*'
+                    },
+                    body: JSON.stringify({
+                        username, password: '123456',
+                        email: `${username}@test.com`, nickname: 'T2'
+                    })
+                });
+                const data = await response.json();
+                addResult(2, response.ok ? 'success' : 'error',
+                    `Fetch + 常用Headers - ${response.status}`,
+                    {status: response.status, data}
+                );
+            } catch (error) {
+                addResult(2, 'error', 'Fetch + 常用Headers - 网络错误', {error: error.message});
+            }
+        }
+
+        async function test3_FetchWithAllAxiosHeaders() {
+            const username = `test3-${Date.now().toString().slice(-6)}`;
+            try {
+                // 模拟axios的默认请求头
+                const response = await fetch('/api/quiz/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json, text/plain, */*',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        username, password: '123456',
+                        email: `${username}@test.com`, nickname: 'T3'
+                    })
+                });
+                const text = await response.text();
+                const data = text ? JSON.parse(text) : null;
+                addResult(3, response.ok ? 'success' : 'error',
+                    `Fetch + Axios默认Headers - ${response.status}`,
+                    {status: response.status, headers: Object.fromEntries(response.headers), data}
+                );
+            } catch (error) {
+                addResult(3, 'error', 'Fetch + Axios默认Headers - 网络错误', {error: error.message});
+            }
+        }
+
+        async function test4_XHR() {
+            const username = `test4-${Date.now().toString().slice(-6)}`;
+            return new Promise((resolve) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/quiz/auth/register', true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        let data;
+                        try {
+                            data = JSON.parse(xhr.responseText);
+                        } catch {
+                            data = xhr.responseText;
+                        }
+                        addResult(4, xhr.status === 200 ? 'success' : 'error',
+                            `XMLHttpRequest测试 - ${xhr.status}`,
+                            {status: xhr.status, responseText: xhr.responseText, data}
+                        );
+                        resolve();
+                    }
+                };
+                xhr.send(JSON.stringify({
+                    username, password: '123456',
+                    email: `${username}@test.com`, nickname: 'T4'
+                }));
+            });
+        }
+
+        async function test5_Axios() {
+            // 动态加载axios
+            if (!window.axios) {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+
+            const username = `test5-${Date.now().toString().slice(-6)}`;
+            try {
+                const response = await window.axios.post('/api/quiz/auth/register', {
+                    username, password: '123456',
+                    email: `${username}@test.com`, nickname: 'T5'
+                });
+                addResult(5, 'success', 'Axios测试 - 200', {data: response.data});
+            } catch (error) {
+                addResult(5, 'error', `Axios测试 - ${error.response?.status || '网络错误'}`, {
+                    status: error.response?.status,
+                    statusText: error.response?.statusText,
+                    data: error.response?.data,
+                    headers: error.response?.headers,
+                    config: {
+                        url: error.config?.url,
+                        method: error.config?.method,
+                        headers: error.config?.headers
+                    }
+                });
+            }
+        }
+
+        async function test6_DirectQuizCore() {
+            // 直接绕过代理，访问quiz-core
+            const username = `test6-${Date.now().toString().slice(-6)}`;
+            try {
+                const response = await fetch('http://localhost:8081/quiz/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username, password: '123456',
+                        email: `${username}@test.com`, nickname: 'T6'
+                    }),
+                    mode: 'cors'
+                });
+                const data = await response.json();
+                addResult(6, response.ok ? 'success' : 'error',
+                    `直接访问quiz-core (绕过代理) - ${response.status}`,
+                    {status: response.status, data}
+                );
+            } catch (error) {
+                addResult(6, 'error', '直接访问quiz-core - 网络错误', {error: error.message});
+            }
+        }
+
+        async function runAllTests() {
+            results.length = 0;
+            updateDisplay();
+
+            addResult(0, 'info', '开始测试', {});
+
+            await test1_BasicFetch();
+            await new Promise(r => setTimeout(r, 500));
+
+            await test2_FetchWithCommonHeaders();
+            await new Promise(r => setTimeout(r, 500));
+
+            await test3_FetchWithAllAxiosHeaders();
+            await new Promise(r => setTimeout(r, 500));
+
+            await test4_XHR();
+            await new Promise(r => setTimeout(r, 500));
+
+            await test5_Axios();
+            await new Promise(r => setTimeout(r, 500));
+
+            await test6_DirectQuizCore();
+
+            // 总结
+            const summary = analyzeResults();
+            addResult(99, 'info', '测试总结', summary);
+        }
+
+        function analyzeResults() {
+            const summary = {
+                totalTests: results.length - 2, // 减去开始和总结
+                successCount: results.filter(r => r.status === 'success').length,
+                errorCount: results.filter(r => r.status === 'error').length,
+                findings: []
+            };
+
+            const fetchSuccess = results.find(r => r.step === 1)?.status === 'success';
+            const axiosSuccess = results.find(r => r.step === 5)?.status === 'success';
+            const directSuccess = results.find(r => r.step === 6)?.status === 'success';
+
+            if (fetchSuccess && !axiosSuccess) {
+                summary.findings.push('🔴 关键发现: Fetch成功但Axios失败');
+                summary.findings.push('🔍 问题在于Axios的默认配置或拦截器');
+            }
+
+            if (!directSuccess) {
+                summary.findings.push('⚠️ 直接访问quiz-core也失败，说明问题在后端');
+            } else if (!fetchSuccess) {
+                summary.findings.push('⚠️ 直接访问成功但通过代理失败，说明Vite代理配置有问题');
+            }
+
+            if (fetchSuccess && axiosSuccess) {
+                summary.findings.push('✅ 所有测试都通过！问题已解决');
+            }
+
+            return summary;
+        }
+
+        // 页面加载时显示说明
+        window.onload = function() {
+            document.getElementById('results').innerHTML = `
+                <div class="section">
+                    <h3>测试说明</h3>
+                    <p>这个工具会依次测试：</p>
+                    <ol>
+                        <li>基础Fetch请求</li>
+                        <li>Fetch + 常用Headers</li>
+                        <li>Fetch + Axios默认Headers</li>
+                        <li>XMLHttpRequest (Axios底层使用)</li>
+                        <li>Axios请求</li>
+                        <li>直接访问quiz-core (绕过Vite代理)</li>
+                    </ol>
+                    <p><strong>点击上方按钮开始测试</strong></p>
+                </div>
+            `;
+        };
+    </script>
+</body>
+</html>

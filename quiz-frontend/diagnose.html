@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册问题诊断</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #444; border-radius: 5px; }
+        .success { border-color: #4CAF50; background: #1e3a1e; }
+        .error { border-color: #f44336; background: #3a1e1e; }
+        .info { border-color: #2196F3; background: #1e2a3a; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <h1>🔍 注册功能诊断工具</h1>
+
+    <div class="section info">
+        <h2>环境信息</h2>
+        <pre id="env-info"></pre>
+    </div>
+
+    <div class="section">
+        <h2>测试选项</h2>
+        <button onclick="clearAll()">清除所有缓存和token</button>
+        <button onclick="testAll()">运行所有测试</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // 显示环境信息
+        function showEnvInfo() {
+            const info = {
+                当前URL: window.location.href,
+                时间: new Date().toLocaleString(),
+                LocalStorage: {
+                    token: localStorage.getItem('token') || 'NONE',
+                    所有Keys: Object.keys(localStorage)
+                },
+                SessionStorage: {
+                    所有Keys: Object.keys(sessionStorage)
+                }
+            };
+            document.getElementById('env-info').textContent = JSON.stringify(info, null, 2);
+        }
+
+        // 清除所有缓存
+        function clearAll() {
+            localStorage.clear();
+            sessionStorage.clear();
+            addResult('✅ 已清除所有缓存和token', 'success');
+            showEnvInfo();
+        }
+
+        // 添加结果
+        function addResult(html, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const section = document.createElement('div');
+            section.className = `section ${type}`;
+            section.innerHTML = html;
+            resultsDiv.insertBefore(section, resultsDiv.firstChild);
+        }
+
+        // 测试直接访问quiz-core
+        async function testDirect() {
+            const timestamp = Date.now().toString().slice(-6);
+            addResult('<h3>测试1: 直接访问 quiz-core (8081)</h3><p>正在测试...</p>', 'info');
+
+            try {
+                const response = await fetch('http://localhost:8081/quiz/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: `direct-${timestamp}`,
+                        password: '123456',
+                        email: `direct-${timestamp}@test.com`,
+                        nickname: 'DirectTest'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addResult(`
+                        <h3>测试1: ✅ 直接访问成功</h3>
+                        <p>状态码: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                } else {
+                    addResult(`
+                        <h3>测试1: ❌ 直接访问失败</h3>
+                        <p>状态码: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                addResult(`
+                    <h3>测试1: ❌ 网络错误</h3>
+                    <pre>${error.message}</pre>
+                `, 'error');
+            }
+        }
+
+        // 测试通过前端代理
+        async function testProxy() {
+            const timestamp = Date.now().toString().slice(-6);
+            addResult('<h3>测试2: 通过前端代理 (/api)</h3><p>正在测试...</p>', 'info');
+
+            try {
+                const response = await fetch('/api/quiz/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: `proxy-${timestamp}`,
+                        password: '123456',
+                        email: `proxy-${timestamp}@test.com`,
+                        nickname: 'ProxyTest'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addResult(`
+                        <h3>测试2: ✅ 前端代理成功</h3>
+                        <p>状态码: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                    // 保存token
+                    if (data.data?.accessToken) {
+                        localStorage.setItem('token', data.data.accessToken);
+                        addResult('<p>已保存token到localStorage</p>', 'success');
+                    }
+                } else {
+                    addResult(`
+                        <h3>测试2: ❌ 前端代理失败</h3>
+                        <p>状态码: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                addResult(`
+                    <h3>测试2: ❌ 网络错误</h3>
+                    <pre>${error.message}</pre>
+                `, 'error');
+            }
+        }
+
+        // 测试OPTIONS预检请求
+        async function testOptions() {
+            addResult('<h3>测试3: OPTIONS预检请求</h3><p>正在测试...</p>', 'info');
+
+            try {
+                const response = await fetch('/api/quiz/auth/register', {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+
+                const corsHeaders = {
+                    'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+                    'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
+                    'access-control-allow-headers': response.headers.get('access-control-allow-headers'),
+                    'access-control-allow-credentials': response.headers.get('access-control-allow-credentials')
+                };
+
+                addResult(`
+                    <h3>测试3: OPTIONS预检结果</h3>
+                    <p>状态码: ${response.status}</p>
+                    <h4>CORS响应头:</h4>
+                    <pre>${JSON.stringify(corsHeaders, null, 2)}</pre>
+                `, response.status === 200 || response.status === 204 ? 'success' : 'error');
+            } catch (error) {
+                addResult(`
+                    <h3>测试3: ❌ OPTIONS请求失败</h3>
+                    <pre>${error.message}</pre>
+                `, 'error');
+            }
+        }
+
+        // 运行所有测试
+        async function testAll() {
+            document.getElementById('results').innerHTML = '';
+            await testOptions();
+            await testDirect();
+            await testProxy();
+            showEnvInfo();
+        }
+
+        // 页面加载时显示环境信息
+        showEnvInfo();
+    </script>
+</body>
+</html>

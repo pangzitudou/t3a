@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axios vs Fetch 对比测试</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #444; border-radius: 5px; }
+        .success { border-color: #4CAF50; background: #1e3a1e; }
+        .error { border-color: #f44336; background: #3a1e1e; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; cursor: pointer; margin: 5px; }
+        pre { white-space: pre-wrap; word-wrap: break-word; font-size: 12px; }
+        .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .comparison { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <h1>🔬 Axios vs Fetch 详细对比测试</h1>
+    <p>这个页面会发送两个相同的请求，一个用fetch，一个用axios，然后对比所有差异。</p>
+
+    <div class="section">
+        <button onclick="runComparison()">运行对比测试</button>
+        <button onclick="document.getElementById('results').innerHTML=''">清除结果</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // 生成唯一用户名
+        function getUsername() {
+            return `test-${Date.now().toString().slice(-6)}`;
+        }
+
+        // 请求数据
+        function getRequestData() {
+            const username = getUsername();
+            return {
+                username: username,
+                password: '123456',
+                email: `${username}@test.com`,
+                nickname: 'TestUser'
+            };
+        }
+
+        // 使用fetch发送请求
+        async function testWithFetch() {
+            const data = getRequestData();
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch('/api/quiz/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const endTime = performance.now();
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+
+                // 获取响应头
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+
+                return {
+                    method: 'fetch',
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: headers,
+                    data: responseData,
+                    duration: endTime - startTime,
+                    request: {
+                        url: '/api/quiz/auth/register',
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: data
+                    }
+                };
+            } catch (error) {
+                return {
+                    method: 'fetch',
+                    success: false,
+                    error: error.message,
+                    stack: error.stack
+                };
+            }
+        }
+
+        // 使用axios发送请求（需要先加载axios）
+        async function testWithAxios() {
+            const data = getRequestData();
+            const startTime = performance.now();
+
+            try {
+                // 动态加载axios
+                if (!window.axios) {
+                    await loadAxios();
+                }
+
+                const response = await window.axios.post('/api/quiz/auth/register', data, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const endTime = performance.now();
+
+                return {
+                    method: 'axios',
+                    success: true,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: response.headers,
+                    data: response.data,
+                    duration: endTime - startTime,
+                    request: {
+                        url: '/api/quiz/auth/register',
+                        method: 'POST',
+                        headers: response.config.headers,
+                        data: response.config.data
+                    }
+                };
+            } catch (error) {
+                const endTime = performance.now();
+                return {
+                    method: 'axios',
+                    success: false,
+                    status: error.response?.status,
+                    statusText: error.response?.statusText,
+                    data: error.response?.data,
+                    headers: error.response?.headers,
+                    error: error.message,
+                    code: error.code,
+                    duration: endTime - startTime,
+                    request: {
+                        url: error.config?.url,
+                        method: error.config?.method,
+                        headers: error.config?.headers,
+                        data: error.config?.data
+                    }
+                };
+            }
+        }
+
+        // 动态加载axios
+        function loadAxios() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // 显示结果
+        function showResult(result) {
+            const statusClass = result.success ? 'success' : 'error';
+            const statusIcon = result.success ? '✅' : '❌';
+
+            let html = `
+                <div class="section ${statusClass}">
+                    <h3>${statusIcon} ${result.method.toUpperCase()} - ${result.success ? '成功' : '失败'}</h3>
+                    <h4>基本信息</h4>
+                    <pre>状态码: ${result.status}
+耗时: ${result.duration?.toFixed(2)}ms</pre>
+
+                    <h4>请求详情</h4>
+                    <pre>${JSON.stringify(result.request, null, 2)}</pre>
+
+                    <h4>响应头</h4>
+                    <pre>${JSON.stringify(result.headers, null, 2)}</pre>
+
+                    <h4>响应数据</h4>
+                    <pre>${typeof result.data === 'object' ? JSON.stringify(result.data, null, 2) : result.data}</pre>
+                `;
+
+            if (result.error) {
+                html += `<h4>错误信息</h4><pre>${result.error}</pre>`;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        // 运行对比测试
+        async function runComparison() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>正在运行测试...</p>';
+
+            const fetchResult = await testWithFetch();
+            const axiosResult = await testWithAxios();
+
+            resultsDiv.innerHTML = `
+                <h2>测试结果</h2>
+                <div class="comparison">
+                    <div>
+                        <h3>Fetch API</h3>
+                        ${showResult(fetchResult)}
+                    </div>
+                    <div>
+                        <h3>Axios</h3>
+                        ${showResult(axiosResult)}
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>差异分析</h3>
+                    <pre>${analyzeDifferences(fetchResult, axiosResult)}</pre>
+                </div>
+
+                <div class="section">
+                    <h3>关键发现</h3>
+                    <pre>${keyFindings(fetchResult, axiosResult)}</pre>
+                </div>
+            `;
+        }
+
+        // 分析差异
+        function analyzeDifferences(fetchResult, axiosResult) {
+            let diff = [];
+
+            if (fetchResult.status !== axiosResult.status) {
+                diff.push(`⚠️ 状态码不同: fetch=${fetchResult.status}, axios=${axiosResult.status}`);
+            }
+
+            const fetchHeaders = JSON.stringify(fetchResult.headers, null, 2);
+            const axiosHeaders = JSON.stringify(axiosResult.headers, null, 2);
+            if (fetchHeaders !== axiosHeaders) {
+                diff.push('⚠️ 响应头不同');
+            }
+
+            if (!axiosResult.success && fetchResult.success) {
+                diff.push('❌ Axios失败但Fetch成功！');
+            }
+
+            if (diff.length === 0) {
+                diff.push('✅ 两者结果一致');
+            }
+
+            return diff.join('\n');
+        }
+
+        // 关键发现
+        function keyFindings(fetchResult, axiosResult) {
+            let findings = [];
+
+            if (fetchResult.success && !axiosResult.success) {
+                findings.push('🔴 关键问题: Axios请求失败但Fetch成功');
+                findings.push('🔍 可能原因:');
+                findings.push('   1. Axios的默认请求头可能与后端安全配置冲突');
+                findings.push('   2. Axios的拦截器可能添加了额外的头');
+                findings.push('   3. Axios的请求体序列化方式可能不同');
+            }
+
+            if (axiosResult.request?.headers) {
+                findings.push('\n📋 Axios请求头:');
+                Object.entries(axiosResult.request.headers).forEach(([key, value]) => {
+                    findings.push(`   ${key}: ${value}`);
+                });
+            }
+
+            if (fetchResult.request?.headers) {
+                findings.push('\n📋 Fetch请求头:');
+                Object.entries(fetchResult.request.headers).forEach(([key, value]) => {
+                    findings.push(`   ${key}: ${value}`);
+                });
+            }
+
+            return findings.join('\n');
+        }
+    </script>
+</body>
+</html>
