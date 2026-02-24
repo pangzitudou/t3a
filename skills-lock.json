@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "skills": {
+    "api-design": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "537aad3150859d0f9b1f1ccd06cc663b14aaffe3dcc7e3dddf156c9830ef48b4"
+    },
+    "backend-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "8bb766a2fec0875d813379e4cdc7ea3243bd2f7d50463895dbf67f902a5c4121"
+    },
+    "continuous-learning-v2": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "4dcd3e7122e967221334d1124a132492d11bcb0ccb5d222fbf03398dc9d51f35"
+    },
+    "cost-aware-llm-pipeline": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "c38747021b4003a590e393b17d78a0f8ebf2822bef9417d31e4fde735343bcf0"
+    },
+    "frontend-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "89a6c376d79c9cb0b6141f9256596b49d9707e9660fd60b8ba456bfc31eb351d"
+    },
+    "java-coding-standards": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "beedc4991d5cbf8069d6ba180db339e454da79a87c2a91f7c2147906b8a88838"
+    },
+    "springboot-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "920297542b4ea2542a02276d42b762aad5c6f97b9f98b987d94081407c86274c"
+    },
+    "springboot-tdd": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "ede1704de63cabdc19688a3b514d72eaab0f977bc30ab2712851ff754e759856"
+    },
+    "springboot-verification": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "796d714031cbc1f2ee7c194240b7226b430376b5e3a969014552f162efa8ede2"
+    },
+    "tdd-workflow": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "fc3274947bea3a5b18a505aeaf06aebc5d6ad459b767e850a2d810d3339577bf"
+    }
+  }
+}

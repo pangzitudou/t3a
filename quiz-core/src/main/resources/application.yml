@@ -25,20 +25,25 @@ spring:
   cloud:
     nacos:
       discovery:
+        enabled: false
         server-addr: localhost:8848
         namespace: test-again-and-again
+        username: nacos
+        password: nacos
       config:
         server-addr: localhost:8848
         namespace: test-again-and-again
         file-extension: yml
         import-check:
           enabled: false  # 禁用 Nacos 配置导入检查
+        username: nacos
+        password: nacos
 
   # 数据源配置
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/t3a_quiz?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&connectionCollation=utf8mb4_unicode_ci
+    url: jdbc:mysql://localhost:3306/t3a_quiz?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root
     druid:

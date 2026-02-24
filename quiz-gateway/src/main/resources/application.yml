@@ -15,12 +15,16 @@ spring:
       discovery:
         server-addr: localhost:8848
         namespace: test-again-and-again
+        username: nacos
+        password: nacos
       config:
         server-addr: localhost:8848
         namespace: test-again-and-again
         file-extension: yml
         import-check:
           enabled: false  # 禁用 Nacos 配置导入检查
+        username: nacos
+        password: nacos
 
     gateway:
       discovery:

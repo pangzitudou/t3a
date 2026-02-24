@@ -6,14 +6,18 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.jsoup.Jsoup;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * 文档解析服务
@@ -45,6 +49,7 @@ public class DocumentParserService {
                 case "pdf" -> parsePdf(inputStream);
                 case "txt" -> parseTxt(inputStream);
                 case "docx", "doc" -> parseWord(inputStream);
+                case "epub" -> parseEpub(inputStream);
                 default -> throw new IllegalArgumentException("不支持的文件格式: " + extension);
             };
         }
@@ -81,6 +86,43 @@ public class DocumentParserService {
             log.info("Word解析完成，文本长度: {}", text.length());
             return text;
         }
+    }
+
+    /**
+     * 解析 EPUB 文件
+     * EPUB 本质是 ZIP 文件，包含 HTML/XHTML 内容文件
+     */
+    private String parseEpub(InputStream inputStream) throws IOException {
+        StringBuilder text = new StringBuilder();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int len;
+        while ((len = inputStream.read(buffer)) > 0) {
+            baos.write(buffer, 0, len);
+        }
+
+        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                String name = entry.getName().toLowerCase();
+                // 只解析 HTML/XHTML 文件，跳过 CSS、图片、字体等
+                if (name.endsWith(".html") || name.endsWith(".xhtml") ||
+                    name.endsWith(".htm")) {
+                    ByteArrayOutputStream content = new ByteArrayOutputStream();
+                    while ((len = zis.read(buffer)) > 0) {
+                        content.write(buffer, 0, len);
+                    }
+                    String html = content.toString("UTF-8");
+                    String chapterText = Jsoup.parse(html).text();
+                    if (!chapterText.trim().isEmpty()) {
+                        text.append(chapterText).append("\n\n");
+                    }
+                }
+                zis.closeEntry();
+            }
+        }
+        log.info("EPUB解析完成，文本长度: {}", text.length());
+        return text.toString();
     }
 
     /**
@@ -121,8 +163,8 @@ public class DocumentParserService {
         }
 
         String extension = getFileExtension(filename).toLowerCase();
-        if (!extension.matches("pdf|txt|docx?")) {
-            throw new IllegalArgumentException("只支持 PDF、TXT、DOC、DOCX 格式");
+        if (!extension.matches("pdf|txt|docx?|epub")) {
+            throw new IllegalArgumentException("只支持 PDF、TXT、EPUB、DOC、DOCX 格式");
         }
     }
 }

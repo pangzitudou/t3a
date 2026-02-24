@@ -41,7 +41,7 @@
         <druid.version>1.2.20</druid.version>
 
         <!-- Utilities -->
-        <lombok.version>1.18.30</lombok.version>
+        <lombok.version>1.18.42</lombok.version>
         <hutool.version>5.8.24</hutool.version>
         <knife4j.version>4.4.0</knife4j.version>
     </properties>
@@ -144,7 +144,7 @@
                     <source>17</source>
                     <target>17</target>
                     <encoding>UTF-8</encoding>
-                    <proc>full</proc>
+                    <fork>false</fork>
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>

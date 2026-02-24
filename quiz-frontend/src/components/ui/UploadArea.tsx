@@ -8,7 +8,7 @@ export interface UploadAreaProps {
   className?: string
 }
 
-export default function UploadArea({ onFileSelect, accept = '.pdf,.txt,.md,.docx', className }: UploadAreaProps) {
+export default function UploadArea({ onFileSelect, accept = '.pdf,.txt,.epub,.docx', className }: UploadAreaProps) {
   const [isDragging, setIsDragging] = useState(false)
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -86,7 +86,7 @@ export default function UploadArea({ onFileSelect, accept = '.pdf,.txt,.md,.docx
         <h3 className="text-xl font-bold text-gray-800 mb-2">
           {isDragging ? 'Drop your file here' : 'Drag & Drop Upload'}
         </h3>
-        <p className="text-gray-500">Supports PDF, TXT, MD, DOCX formats</p>
+        <p className="text-gray-500">Supports PDF, TXT, EPUB, DOCX formats</p>
         <p className="text-sm text-primary-600 mt-2">Or click to browse</p>
       </label>
     </motion.div>
